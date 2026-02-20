@@ -4,7 +4,7 @@ import { initializeApp, cert, getApps } from "firebase-admin/app"
 import { getFirestore } from "firebase-admin/firestore"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2026-01-28.clover",
 })
 
 // Initialize Firebase Admin
