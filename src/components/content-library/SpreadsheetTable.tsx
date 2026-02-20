@@ -43,6 +43,9 @@ import {
 } from "./FilterModal"
 import type { Article, ArticleStatus, WizardStep } from "@/types"
 
+// ── Ranking type options ────────────────────────────────────
+const RANKING_TYPE_OPTIONS = ["SEO/LLM", "Leadership", "Thought Leadership", "Product", "Comparison", "How-To"] as const
+
 // ── Types ──────────────────────────────────────────────────────
 interface TableView {
   id: string
@@ -75,7 +78,7 @@ const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
 const SEEDED_KEY = "wonda_articles_seeded"
 const TABLE_VERSION_KEY = "wonda_table_version"
-const CURRENT_TABLE_VERSION = "5" // bump to force reset of stale localStorage views
+const CURRENT_TABLE_VERSION = "6" // bump to force reset of stale localStorage views
 
 // Column id → friendly label
 const COLUMN_LABELS: Record<string, string> = {
@@ -86,6 +89,7 @@ const COLUMN_LABELS: Record<string, string> = {
   category: "Category",
   status: "Status",
   origin: "Source",
+  rankingType: "Ranking Type",
   metaTitle: "Meta Title",
   metaDescription: "Meta Description",
   createdAt: "Created",
@@ -100,6 +104,7 @@ const FILTERABLE_COLUMNS = [
   { id: "category", label: "Category" },
   { id: "status", label: "Status" },
   { id: "origin", label: "Source" },
+  { id: "rankingType", label: "Ranking Type" },
   { id: "metaTitle", label: "Meta Title" },
   { id: "metaDescription", label: "Meta Description" },
 ]
@@ -111,6 +116,7 @@ const DEFAULT_COLUMN_ORDER = [
   "title",
   "status",
   "origin",
+  "rankingType",
   "createdAt",
   "updatedAt",
   "slug",
@@ -181,8 +187,8 @@ function existingArticlesView(): TableView {
 function getNextAction(
   article: Article
 ): { label: string; icon: typeof Play; step: WizardStep } {
-  // Legacy articles are already live — always show Refresh
-  if (article.origin === "existing") {
+  // Non-Wonda articles are already live — always show Refresh
+  if (article.origin !== "wonda") {
     return { label: "Refresh", icon: RefreshCw, step: "editor" }
   }
   if (!article.bodyHtml || article.status === "pending") {
@@ -230,6 +236,11 @@ const MOCK_KEYWORDS = [
   "SEO for SaaS companies",
 ]
 
+const SEED_RANKING_TYPES = [
+  "SEO/LLM", "SEO/LLM", "Leadership", "SEO/LLM", "How-To",
+  "Product", "SEO/LLM", "Leadership", "Comparison", "SEO/LLM",
+]
+
 function generateSeedArticles(): Article[] {
   const baseDate = new Date()
   return MOCK_KEYWORDS.map((keyword, i) => {
@@ -251,6 +262,7 @@ function generateSeedArticles(): Article[] {
       category: "blog" as const,
       status: "published" as const,
       origin: "existing" as const,
+      rankingType: SEED_RANKING_TYPES[i],
       bodyHtml: `<h1>${title}</h1><p>Article content for ${keyword}.</p>`,
       faqHtml: "",
       faqItems: [],
@@ -597,7 +609,7 @@ export function SpreadsheetTable({
                 ? "text-[#10B981] hover:text-[#10B981]/80"
                 : "text-[#F59E0B] hover:text-[#F59E0B]/80"
           const hasContent = Boolean(article.bodyHtml)
-          const isLegacy = article.origin === "existing"
+          const isLegacy = article.origin !== "wonda"
           const showPreview = hasContent || isLegacy
           return (
             <div className="flex items-center gap-1">
@@ -713,7 +725,7 @@ export function SpreadsheetTable({
         size: 110,
         cell: ({ row, getValue }) => {
           const status = getValue<ArticleStatus>()
-          const isLegacy = row.original.origin === "existing"
+          const isLegacy = row.original.origin !== "wonda"
           const displayLabel = isLegacy || status === "published" ? "Live" : status
           const styleKey = isLegacy ? "published" : status
           return (
@@ -740,6 +752,33 @@ export function SpreadsheetTable({
             >
               {isWonda ? "Wonda" : "Legacy"}
             </Badge>
+          )
+        },
+      },
+      rankingType: {
+        accessorKey: "rankingType",
+        header: "Ranking Type",
+        size: 140,
+        cell: ({ row }) => {
+          const article = row.original
+          const value = article.rankingType || ""
+          return (
+            <div onClick={(e) => e.stopPropagation()}>
+              <select
+                className="text-xs bg-transparent border-none outline-none cursor-pointer text-muted-foreground hover:text-foreground"
+                value={value}
+                onChange={(e) => {
+                  handleInlineCellUpdate(article.id, "rankingType", e.target.value)
+                }}
+              >
+                <option value="">—</option>
+                {RANKING_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
           )
         },
       },
@@ -887,6 +926,7 @@ export function SpreadsheetTable({
   const table = useReactTable({
     data: filteredByAdvanced,
     columns,
+    getRowId: (row) => row.id,
     state: {
       sorting,
       columnVisibility,
@@ -962,6 +1002,13 @@ export function SpreadsheetTable({
 
   // ── New Article: adds inline row ────────────
   const handleAddInlineRow = useCallback(() => {
+    // If current view has filters that would hide the new article, switch to All Articles
+    if (filterGroup.rules.length > 0) {
+      const allView = views.find((v) => v.id === "default")
+      if (allView) {
+        handleSwitchView(allView.id)
+      }
+    }
     const now = new Date().toISOString()
     const id = crypto.randomUUID()
     addArticle({
@@ -985,7 +1032,7 @@ export function SpreadsheetTable({
       updatedAt: now,
     })
     setNewRowIds((prev) => new Set(prev).add(id))
-  }, [addArticle])
+  }, [addArticle, filterGroup.rules.length, views, handleSwitchView])
 
   const handleExportCsv = useCallback(() => {
     const exportCols = columnOrder.filter(
