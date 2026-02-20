@@ -17,16 +17,17 @@ const ONBOARDING_STEPS = [
   { label: "Preparing your content engine...", delay: 1000 },
 ]
 
-type Phase = "domain-input" | "animating" | "complete"
+type Phase = "loading" | "domain-input" | "animating" | "complete"
 
 export function OnboardingPage() {
   const navigate = useNavigate()
   const { user, firebaseUser, refreshUser } = useAuth()
   const { updateProfile } = useCompanyProfile()
-  const [phase, setPhase] = useState<Phase>("animating")
+  const [phase, setPhase] = useState<Phase>("loading")
   const [currentStep, setCurrentStep] = useState(0)
   const [customDomain, setCustomDomain] = useState("")
-  const started = useRef(false)
+  const animationStarted = useRef(false)
+  const domainChecked = useRef(false)
   const userRef = useRef(user)
   userRef.current = user
 
@@ -43,20 +44,23 @@ export function OnboardingPage() {
 
   // Determine if we need domain input (personal email)
   useEffect(() => {
-    if (!user || started.current) return
+    if (!user || domainChecked.current) return
+    domainChecked.current = true
+
     if (isPersonalEmail(user.email)) {
       setPhase("domain-input")
     } else {
-      // Work email — start animation immediately
-      runAnimation(user.domain)
+      // Work email — start animation immediately with email domain
+      startAnimation(user.domain)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
-  const runAnimation = useCallback(async (domain: string) => {
-    if (started.current) return
-    started.current = true
+  const startAnimation = useCallback(async (domain: string) => {
+    if (animationStarted.current) return
+    animationStarted.current = true
     setPhase("animating")
+    setCurrentStep(0)
 
     for (let i = 0; i < ONBOARDING_STEPS.length; i++) {
       setCurrentStep(i)
@@ -77,7 +81,7 @@ export function OnboardingPage() {
         await writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
         await refreshUser()
       } catch {
-        // Still mark complete locally so user can proceed
+        // Still allow user to proceed
       }
     }
 
@@ -88,7 +92,7 @@ export function OnboardingPage() {
     e.preventDefault()
     const domain = customDomain.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
     if (!domain) return
-    runAnimation(domain)
+    startAnimation(domain)
   }
 
   const handleNavigate = async (path: string) => {
@@ -111,6 +115,13 @@ export function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
       <div className="w-full max-w-lg p-8 text-center space-y-8">
         <img src="/wonda-logo.png" alt="Wonda" className="h-8 mx-auto" />
+
+        {/* Loading Phase */}
+        {phase === "loading" && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#0061FF]" />
+          </div>
+        )}
 
         {/* Domain Input Phase (personal email only) */}
         {phase === "domain-input" && (
@@ -140,7 +151,7 @@ export function OnboardingPage() {
         )}
 
         {/* Animation Phase */}
-        {phase !== "domain-input" && (
+        {(phase === "animating" || phase === "complete") && (
           <>
             <div className="space-y-4 text-left">
               {ONBOARDING_STEPS.map((step, index) => {
