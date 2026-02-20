@@ -39,20 +39,13 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 const googleProvider = new GoogleAuthProvider()
 
-async function getOrCreateUserDoc(firebaseUser: User): Promise<UserProfile> {
-  const userRef = doc(db, "users", firebaseUser.uid)
-  const snap = await getDoc(userRef)
-
-  if (snap.exists()) {
-    return snap.data() as UserProfile
-  }
-
-  const email = firebaseUser.email ?? ""
-  const newProfile: UserProfile = {
-    uid: firebaseUser.uid,
+function buildFallbackProfile(fbUser: User): UserProfile {
+  const email = fbUser.email ?? ""
+  return {
+    uid: fbUser.uid,
     email,
     domain: extractDomain(email),
-    displayName: firebaseUser.displayName ?? "",
+    displayName: fbUser.displayName ?? "",
     role: isAdminEmail(email) ? "admin" : "user",
     createdAt: new Date().toISOString(),
     trialStartDate: new Date().toISOString(),
@@ -62,7 +55,17 @@ async function getOrCreateUserDoc(firebaseUser: User): Promise<UserProfile> {
     onboardingComplete: false,
     articlesUsed: 0,
   }
+}
 
+async function getOrCreateUserDoc(firebaseUser: User): Promise<UserProfile> {
+  const userRef = doc(db, "users", firebaseUser.uid)
+  const snap = await getDoc(userRef)
+
+  if (snap.exists()) {
+    return snap.data() as UserProfile
+  }
+
+  const newProfile = buildFallbackProfile(firebaseUser)
   await setDoc(userRef, newProfile)
   return newProfile
 }
@@ -80,10 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const profile = await getOrCreateUserDoc(fbUser)
           setUser(profile)
-          // Run migration on first login
           migrateLocalStorageToFirestore(fbUser.uid).catch(() => {})
-        } catch {
-          setUser(null)
+        } catch (err) {
+          console.error("Firestore user doc failed, using fallback:", err)
+          // Fallback: build profile from Firebase Auth data so app still works
+          setUser(buildFallbackProfile(fbUser))
         }
       } else {
         setUser(null)
@@ -96,8 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     if (!firebaseUser) return
-    const profile = await getOrCreateUserDoc(firebaseUser)
-    setUser(profile)
+    try {
+      const profile = await getOrCreateUserDoc(firebaseUser)
+      setUser(profile)
+    } catch {
+      // Keep existing user state
+    }
   }, [firebaseUser])
 
   const signInWithGoogle = useCallback(async () => {
