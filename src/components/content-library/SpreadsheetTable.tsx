@@ -707,9 +707,10 @@ export function SpreadsheetTable({
         size: 110,
         cell: ({ getValue }) => {
           const status = getValue<ArticleStatus>()
+          const displayLabel = status === "published" ? "Live" : status
           return (
             <Badge className={`text-xs capitalize ${STATUS_STYLES[status]}`}>
-              {status}
+              {displayLabel}
             </Badge>
           )
         },
