@@ -118,6 +118,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const articlesCtx = useArticles()
   const profileCtx = useCompanyProfile()
 
+  // Use refs to avoid stale closures in async callbacks
+  const pendingRef = useRef(state.pendingConfirmation)
+  pendingRef.current = state.pendingConfirmation
+  const articlesRef = useRef(articlesCtx)
+  articlesRef.current = articlesCtx
+  const profileRef = useRef(profileCtx)
+  profileRef.current = profileCtx
+
   // Sync messages to localStorage
   useEffect(() => {
     setStoredMessages(state.messages)
@@ -149,62 +157,76 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ADD_MESSAGE", message: userMsg })
       dispatch({ type: "SET_PROCESSING", value: true })
 
-      // Simulate async processing (50ms delay for typing indicator)
-      setTimeout(() => {
-        // Check if this is a confirmation for pending flow
-        if (state.pendingConfirmation && /\b(yes|confirm|ok|sure|go)\b/i.test(trimmed)) {
-          const result = confirmGeneration(state.pendingConfirmation, {
-            articles: articlesCtx.articles,
-            addArticle: articlesCtx.addArticle,
-            updateArticle: articlesCtx.updateArticle,
-            getArticleById: articlesCtx.getArticleById,
-          })
-          dispatch({ type: "ADD_MESSAGE", message: result.response })
-          dispatch({ type: "SET_PENDING", pending: null })
-          emitCommand(result.command)
-        } else {
-          const result = processMessage(
-            trimmed,
-            {
-              articles: articlesCtx.articles,
-              addArticle: articlesCtx.addArticle,
-              updateArticle: articlesCtx.updateArticle,
-              getArticleById: articlesCtx.getArticleById,
-            },
-            {
-              profile: profileCtx.profile,
-              updateProfile: profileCtx.updateProfile,
-            }
-          )
+      // Check if this is a confirmation for pending flow
+      const pending = pendingRef.current
+      if (pending && /\b(yes|confirm|ok|sure|go|yep|yeah|do it)\b/i.test(trimmed)) {
+        const result = confirmGeneration(pending, {
+          articles: articlesRef.current.articles,
+          addArticle: articlesRef.current.addArticle,
+          updateArticle: articlesRef.current.updateArticle,
+          getArticleById: articlesRef.current.getArticleById,
+        })
+        dispatch({ type: "ADD_MESSAGE", message: result.response })
+        dispatch({ type: "SET_PENDING", pending: null })
+        dispatch({ type: "SET_PROCESSING", value: false })
+        emitCommand(result.command)
+        return
+      }
+
+      // Async AI classification
+      processMessage(
+        trimmed,
+        {
+          articles: articlesRef.current.articles,
+          addArticle: articlesRef.current.addArticle,
+          updateArticle: articlesRef.current.updateArticle,
+          getArticleById: articlesRef.current.getArticleById,
+        },
+        {
+          profile: profileRef.current.profile,
+          updateProfile: profileRef.current.updateProfile,
+        }
+      )
+        .then((result) => {
           dispatch({ type: "ADD_MESSAGE", message: result.response })
           if (result.pendingConfirmation) {
             dispatch({ type: "SET_PENDING", pending: result.pendingConfirmation })
           }
           emitCommand(result.command)
-        }
-        dispatch({ type: "SET_PROCESSING", value: false })
-      }, 50)
+        })
+        .catch(() => {
+          dispatch({
+            type: "ADD_MESSAGE",
+            message: {
+              id: `msg_err_${Date.now()}`,
+              role: "assistant",
+              text: "Sorry, something went wrong. Please try again.",
+              timestamp: Date.now(),
+            },
+          })
+        })
+        .finally(() => {
+          dispatch({ type: "SET_PROCESSING", value: false })
+        })
     },
-    [state.pendingConfirmation, articlesCtx, profileCtx, emitCommand]
+    [emitCommand]
   )
 
   const handleButtonClick = useCallback(
     (action: string, payload?: Record<string, string>) => {
       // Handle confirm_generate specially
-      if (action === "confirm_generate" && state.pendingConfirmation) {
+      if (action === "confirm_generate" && pendingRef.current) {
         dispatch({ type: "SET_PROCESSING", value: true })
-        setTimeout(() => {
-          const result = confirmGeneration(state.pendingConfirmation!, {
-            articles: articlesCtx.articles,
-            addArticle: articlesCtx.addArticle,
-            updateArticle: articlesCtx.updateArticle,
-            getArticleById: articlesCtx.getArticleById,
-          })
-          dispatch({ type: "ADD_MESSAGE", message: result.response })
-          dispatch({ type: "SET_PENDING", pending: null })
-          dispatch({ type: "SET_PROCESSING", value: false })
-          emitCommand(result.command)
-        }, 50)
+        const result = confirmGeneration(pendingRef.current, {
+          articles: articlesRef.current.articles,
+          addArticle: articlesRef.current.addArticle,
+          updateArticle: articlesRef.current.updateArticle,
+          getArticleById: articlesRef.current.getArticleById,
+        })
+        dispatch({ type: "ADD_MESSAGE", message: result.response })
+        dispatch({ type: "SET_PENDING", pending: null })
+        dispatch({ type: "SET_PROCESSING", value: false })
+        emitCommand(result.command)
         return
       }
 
@@ -214,7 +236,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         emitCommand(cmd)
       }
     },
-    [state.pendingConfirmation, articlesCtx, emitCommand]
+    [emitCommand]
   )
 
   const toggleSidebar = useCallback(() => dispatch({ type: "TOGGLE_SIDEBAR" }), [])

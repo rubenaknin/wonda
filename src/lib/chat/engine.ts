@@ -30,15 +30,29 @@ function createMessageId(): string {
 }
 
 /**
- * Main pipeline: message → classify → execute → respond
+ * Main pipeline: message → AI classify → execute → respond
  */
-export function processMessage(
+export async function processMessage(
   userText: string,
   articlesOps: ArticlesOps,
   profileOps: ProfileOps
-): ProcessResult {
-  const intent = classifyIntent(userText, articlesOps.articles, profileOps.profile)
+): Promise<ProcessResult> {
+  const intentResult = await classifyIntent(userText, articlesOps.articles)
+  const { fallbackText, ...intent } = intentResult
+
   const result = executeAction(intent, articlesOps, profileOps)
+
+  // If AI returned a custom fallback message for unknown intents, use it
+  if (intent.type === "unknown" && fallbackText) {
+    const response: ChatMessage = {
+      id: createMessageId(),
+      role: "assistant",
+      text: fallbackText,
+      timestamp: Date.now(),
+    }
+    return { response }
+  }
+
   const partial = buildResponse(intent, result)
 
   const response: ChatMessage = {
