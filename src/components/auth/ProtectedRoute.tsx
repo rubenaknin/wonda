@@ -22,7 +22,11 @@ export function ProtectedRoute({ children, requireAdmin }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />
   }
 
-  if (!firebaseUser.emailVerified) {
+  // Only require email verification for email/password signups (not Google)
+  const isGoogleUser = firebaseUser.providerData.some(
+    (p) => p.providerId === "google.com"
+  )
+  if (!isGoogleUser && !firebaseUser.emailVerified) {
     return <Navigate to="/verify-email" replace />
   }
 
