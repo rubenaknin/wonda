@@ -181,6 +181,10 @@ function existingArticlesView(): TableView {
 function getNextAction(
   article: Article
 ): { label: string; icon: typeof Play; step: WizardStep } {
+  // Legacy articles are already live — always show Refresh
+  if (article.origin === "existing") {
+    return { label: "Refresh", icon: RefreshCw, step: "editor" }
+  }
   if (!article.bodyHtml || article.status === "pending") {
     return { label: "Generate", icon: Play, step: "generate" }
   }
@@ -593,6 +597,8 @@ export function SpreadsheetTable({
                 ? "text-[#10B981] hover:text-[#10B981]/80"
                 : "text-[#F59E0B] hover:text-[#F59E0B]/80"
           const hasContent = Boolean(article.bodyHtml)
+          const isLegacy = article.origin === "existing"
+          const showPreview = hasContent || isLegacy
           return (
             <div className="flex items-center gap-1">
               <Button
@@ -621,7 +627,7 @@ export function SpreadsheetTable({
                 <Icon className="h-3 w-3" />
                 {label}
               </Button>
-              {hasContent && label !== "Generate" && (
+              {showPreview && label !== "Generate" && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -705,11 +711,13 @@ export function SpreadsheetTable({
         accessorKey: "status",
         header: "Status",
         size: 110,
-        cell: ({ getValue }) => {
+        cell: ({ row, getValue }) => {
           const status = getValue<ArticleStatus>()
-          const displayLabel = status === "published" ? "Live" : status
+          const isLegacy = row.original.origin === "existing"
+          const displayLabel = isLegacy || status === "published" ? "Live" : status
+          const styleKey = isLegacy ? "published" : status
           return (
-            <Badge className={`text-xs capitalize ${STATUS_STYLES[status]}`}>
+            <Badge className={`text-xs capitalize ${STATUS_STYLES[styleKey]}`}>
               {displayLabel}
             </Badge>
           )
