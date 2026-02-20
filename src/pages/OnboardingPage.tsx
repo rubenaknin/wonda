@@ -501,10 +501,10 @@ export function OnboardingPage() {
           <div className="pt-12 space-y-8 animate-in fade-in duration-300">
             <div className="space-y-3">
               <h1 className="text-3xl font-bold tracking-tight">
-                Review your initial prompts
+                Review your initial questions
               </h1>
               <p className="text-muted-foreground max-w-2xl">
-                We've built your initial prompt list based on your brand, audience, and competitors — targeting the searches where you want to be mentioned and cited. Later, you'll scale this by adding custom prompts and your own first-party data sources.
+                We've built your initial question list based on your brand, audience, and competitors — targeting the topics your audience is searching for. Later, you'll scale this by adding custom questions and your own first-party data sources.
               </p>
             </div>
 
@@ -512,7 +512,7 @@ export function OnboardingPage() {
               {/* Header */}
               <div className="grid grid-cols-[1fr_40px] gap-3 px-1">
                 <div className="text-sm font-medium">
-                  Prompt <span className="text-muted-foreground font-normal">({questions.length})</span>
+                  Question <span className="text-muted-foreground font-normal">({questions.length})</span>
                 </div>
                 <div />
               </div>
@@ -547,7 +547,7 @@ export function OnboardingPage() {
                 <Input
                   value={newQuestion}
                   onChange={(e) => setNewQuestion(e.target.value)}
-                  placeholder="Add a new prompt..."
+                  placeholder="Add a new question..."
                   className="h-11"
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddQuestion())}
                 />

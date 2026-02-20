@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Plus, Upload, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -6,12 +6,11 @@ import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
 import { EmptyState } from "@/components/content-library/EmptyState"
-import { ArticleTable } from "@/components/content-library/ArticleTable"
+import { SpreadsheetTable } from "@/components/content-library/SpreadsheetTable"
 import { InlineArticleWizard } from "@/components/article-wizard/InlineArticleWizard"
 import { UpgradeModal } from "@/components/plan/UpgradeModal"
 import { CsvUploadPanel } from "@/components/content-library/CsvUploadPanel"
 import { KeywordResearchPanel } from "@/components/content-library/KeywordResearchPanel"
-import { ContentFilters, type FilterState } from "@/components/content-library/ContentFilters"
 import { parseSitemapUrls } from "@/lib/sitemap"
 import type { WizardStep } from "@/types"
 
@@ -21,21 +20,12 @@ type PanelMode =
   | { type: "research" }
   | null
 
-const defaultFilters: FilterState = {
-  search: "",
-  source: "all",
-  contentPath: "all",
-  status: "all",
-  category: "all",
-}
-
 export function ContentLibraryPage() {
   const { articles, addArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { isGrowthOrAbove, canGenerate } = usePlan()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-  const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const sitemapLoaded = useRef(false)
 
   // Load sitemap articles on mount if content sitemap URLs are configured
@@ -51,41 +41,6 @@ export function ContentLibraryPage() {
       addArticle(article)
     }
   }, [profile.contentPaths, articles, addArticle])
-
-  // Debounced search
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(filters.search), 300)
-    return () => clearTimeout(timer)
-  }, [filters.search])
-
-  // Filter articles
-  const filteredArticles = useMemo(() => {
-    return articles.filter((a) => {
-      if (debouncedSearch) {
-        const q = debouncedSearch.toLowerCase()
-        const matches =
-          a.title.toLowerCase().includes(q) ||
-          a.keyword.toLowerCase().includes(q) ||
-          a.slug.toLowerCase().includes(q)
-        if (!matches) return false
-      }
-      if (filters.source !== "all") {
-        const articleSource = a.source ?? "new"
-        if (articleSource !== filters.source) return false
-      }
-      if (filters.contentPath !== "all") {
-        if (a.contentPath !== filters.contentPath) return false
-      }
-      if (filters.status !== "all") {
-        if (a.status !== filters.status) return false
-      }
-      if (filters.category !== "all") {
-        if (a.category !== filters.category) return false
-      }
-      return true
-    })
-  }, [articles, debouncedSearch, filters.source, filters.contentPath, filters.status, filters.category])
 
   const handleCreateArticle = () => {
     if (!canGenerate) {
@@ -104,7 +59,7 @@ export function ContentLibraryPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -159,17 +114,11 @@ export function ContentLibraryPage() {
       {!panel && articles.length === 0 ? (
         <EmptyState onCreateArticle={handleCreateArticle} />
       ) : !panel ? (
-        <>
-          <ContentFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            contentPaths={profile.contentPaths}
-          />
-          <ArticleTable
-            filteredArticles={filteredArticles}
-            onEditArticle={handleEditArticle}
-          />
-        </>
+        <SpreadsheetTable
+          articles={articles}
+          onEditArticle={handleEditArticle}
+          onOpenUpload={() => setPanel({ type: "csv" })}
+        />
       ) : null}
     </div>
   )
