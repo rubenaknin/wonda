@@ -31,9 +31,9 @@ export function AppSidebar() {
   const { plan, articlesRemaining } = usePlan()
 
   return (
-    <Sidebar className="glass-sidebar border-r-0">
+    <Sidebar className="bg-[#F8FAFC] border-r border-border">
       <SidebarHeader className="p-6">
-        <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Wonda
         </h1>
         <p className="text-xs text-muted-foreground mt-1">SEO Content Engine</p>
@@ -56,7 +56,7 @@ export function AppSidebar() {
                       profileCompletion < 100 && (
                         <Badge
                           variant="secondary"
-                          className="ml-auto text-[10px] px-1.5 py-0 bg-amber-500/20 text-amber-400"
+                          className="ml-auto text-[10px] px-1.5 py-0 bg-[#F59E0B]/10 text-[#F59E0B]"
                         >
                           ~5 min
                         </Badge>
@@ -65,7 +65,7 @@ export function AppSidebar() {
                       profileCompletion === 100 && (
                         <Badge
                           variant="secondary"
-                          className="ml-auto text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400"
+                          className="ml-auto text-[10px] px-1.5 py-0 bg-[#10B981]/10 text-[#10B981]"
                         >
                           Done
                         </Badge>
@@ -77,7 +77,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-white/5">
+      <SidebarFooter className="p-4 border-t border-border">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="capitalize">{plan.tier} Plan</span>
           <span>
@@ -92,9 +92,9 @@ export function AppSidebar() {
               <span>Profile</span>
               <span>{profileCompletion}%</span>
             </div>
-            <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-1 rounded-full bg-border overflow-hidden">
               <div
-                className="h-full rounded-full bg-purple-500 transition-all duration-300"
+                className="h-full rounded-full bg-[#0061FF] transition-all duration-300"
                 style={{ width: `${profileCompletion}%` }}
               />
             </div>

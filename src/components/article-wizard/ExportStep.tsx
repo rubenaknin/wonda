@@ -55,10 +55,10 @@ export function ExportStep({
         </p>
       </div>
 
-      <div className="glass rounded-lg p-6 space-y-4">
+      <div className="wonda-card p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-emerald-500/20">
-            <Check className="h-5 w-5 text-emerald-400" />
+          <div className="p-2 rounded-full bg-[#10B981]/10">
+            <Check className="h-5 w-5 text-[#10B981]" />
           </div>
           <div>
             <p className="font-medium">{title || "Untitled Article"}</p>

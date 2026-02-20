@@ -63,7 +63,7 @@ export function CompanyProfilePage() {
 
       <WizardStepper steps={STEPS} currentStep={currentStep} />
 
-      <Card className="glass">
+      <Card className="wonda-card">
         <CardHeader>
           <CardTitle>
             Step {currentStep + 1}: {STEPS[currentStep]}
@@ -93,7 +93,7 @@ export function CompanyProfilePage() {
             <IntelligenceBankStep profile={profile} onUpdate={updateProfile} />
           )}
 
-          <div className="flex justify-between pt-4 border-t border-white/5">
+          <div className="flex justify-between pt-4 border-t border-border">
             <Button
               variant="ghost"
               onClick={handleBack}

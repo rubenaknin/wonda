@@ -8,7 +8,7 @@ export function AppLayout() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <main className="flex-1 overflow-auto">
-          <div className="flex items-center gap-2 p-4 border-b border-white/5">
+          <div className="flex items-center gap-2 p-4 border-b border-border">
             <SidebarTrigger />
           </div>
           <div className="p-6 lg:p-8">

@@ -33,11 +33,11 @@ import { formatRelativeTime } from "@/lib/date"
 import type { Article, ArticleStatus, WizardStep } from "@/types"
 
 const STATUS_STYLES: Record<ArticleStatus, string> = {
-  pending: "bg-zinc-500/20 text-zinc-400",
-  draft: "bg-blue-500/20 text-blue-400",
-  published: "bg-emerald-500/20 text-emerald-400",
-  generating: "bg-amber-500/20 text-amber-400 animate-pulse",
-  error: "bg-red-500/20 text-red-400",
+  pending: "bg-slate-100 text-slate-500",
+  draft: "bg-[#0061FF]/10 text-[#0061FF]",
+  published: "bg-[#10B981]/10 text-[#10B981]",
+  generating: "bg-[#F59E0B]/10 text-[#F59E0B] animate-pulse",
+  error: "bg-red-50 text-red-500",
 }
 
 interface ArticleTableProps {
@@ -115,7 +115,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
   return (
     <div className="space-y-4">
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0061FF]/5 border border-[#0061FF]/20">
           <span className="text-sm">
             {selectedIds.size} article{selectedIds.size > 1 ? "s" : ""} selected
           </span>
@@ -126,10 +126,10 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
         </div>
       )}
 
-      <div className="glass rounded-lg overflow-hidden">
+      <div className="wonda-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="border-white/5 hover:bg-transparent">
+            <TableRow className="border-border hover:bg-transparent">
               <TableHead className="w-10">
                 <Checkbox
                   checked={
@@ -152,7 +152,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
             {articles.map((article) => (
               <TableRow
                 key={article.id}
-                className="border-white/5 cursor-pointer"
+                className="border-border cursor-pointer"
                 onClick={() => onEditArticle(article.id)}
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -188,7 +188,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300"
+                        className="h-8 w-8 p-0 text-[#10B981] hover:text-[#10B981]/80"
                         title="Continue generation"
                         onClick={() =>
                           onEditArticle(article.id, getResumeStep(article))
@@ -202,7 +202,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
+                        className="h-8 w-8 p-0 text-[#0061FF] hover:text-[#0061FF]/80"
                         title="Refresh article"
                         onClick={() => onEditArticle(article.id, "generate")}
                       >

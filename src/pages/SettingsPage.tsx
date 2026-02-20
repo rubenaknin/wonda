@@ -43,7 +43,7 @@ export function SettingsPage() {
         </p>
       </div>
 
-      <Card className="glass">
+      <Card className="wonda-card">
         <CardHeader>
           <CardTitle>Plan</CardTitle>
           <CardDescription>
@@ -60,14 +60,14 @@ export function SettingsPage() {
                   onClick={() => handleSelectPlan(p.tier)}
                   className={`text-left rounded-lg p-4 border transition-all ${
                     isActive
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
+                      ? "border-[#0061FF] bg-[#0061FF]/5"
+                      : "border-border bg-white hover:border-[#0061FF]/30"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold">{p.name}</span>
                     {isActive && (
-                      <Badge className="bg-purple-500/20 text-purple-400 text-[10px]">
+                      <Badge className="bg-[#0061FF]/10 text-[#0061FF] text-[10px]">
                         Current
                       </Badge>
                     )}
@@ -90,7 +90,7 @@ export function SettingsPage() {
                         key={f}
                         className="text-xs text-muted-foreground flex items-start gap-1.5"
                       >
-                        <Check className="h-3 w-3 mt-0.5 text-emerald-400 shrink-0" />
+                        <Check className="h-3 w-3 mt-0.5 text-[#10B981] shrink-0" />
                         {f}
                       </li>
                     ))}
@@ -102,7 +102,7 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="glass">
+      <Card className="wonda-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Admin: n8n Workflows
@@ -120,7 +120,7 @@ export function SettingsPage() {
         <CardContent className="space-y-6">
           {WEBHOOK_WORKFLOWS.map((workflow, index) => (
             <div key={workflow.key}>
-              {index > 0 && <Separator className="mb-6 bg-white/5" />}
+              {index > 0 && <Separator className="mb-6 bg-[#F8FAFC]" />}
               <div className="space-y-2">
                 <Label htmlFor={workflow.key} className="text-sm font-medium">
                   {workflow.label}

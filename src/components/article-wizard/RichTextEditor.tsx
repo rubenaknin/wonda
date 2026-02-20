@@ -18,7 +18,6 @@ export function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null)
   const isInternalUpdate = useRef(false)
 
-  // Set initial content
   useEffect(() => {
     if (editorRef.current && !isInternalUpdate.current) {
       if (editorRef.current.innerHTML !== value) {
@@ -48,65 +47,23 @@ export function RichTextEditor({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => exec("bold")}
-          title="Bold"
-        >
+      <div className="flex items-center gap-1 p-1 rounded-lg bg-[#F8FAFC] border border-border">
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => exec("bold")} title="Bold">
           <Bold className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => exec("italic")}
-          title="Italic"
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => exec("italic")} title="Italic">
           <Italic className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => exec("formatBlock", "h2")}
-          title="Heading 2"
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => exec("formatBlock", "h2")} title="Heading 2">
           <Heading2 className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => exec("formatBlock", "h3")}
-          title="Heading 3"
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => exec("formatBlock", "h3")} title="Heading 3">
           <Heading3 className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => exec("insertUnorderedList")}
-          title="Bullet list"
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => exec("insertUnorderedList")} title="Bullet list">
           <List className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={handleLink}
-          title="Insert link"
-        >
+        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleLink} title="Insert link">
           <Link className="h-4 w-4" />
         </Button>
       </div>
@@ -116,7 +73,7 @@ export function RichTextEditor({
         contentEditable
         onInput={handleInput}
         data-placeholder={placeholder}
-        className="rich-editor glass rounded-lg p-4 outline-none focus:ring-1 focus:ring-purple-500/50"
+        className="rich-editor wonda-card p-4 outline-none focus:ring-1 focus:ring-[#0061FF]/50"
         style={{ minHeight }}
       />
     </div>

@@ -120,10 +120,10 @@ export function KeywordResearchPanel({ onClose }: KeywordResearchPanelProps) {
   }
 
   return (
-    <Card className="glass">
+    <Card className="wonda-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-400" />
+          <Sparkles className="h-5 w-5 text-[#0061FF]" />
           Wonda Keyword Research
         </CardTitle>
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
@@ -210,8 +210,8 @@ export function KeywordResearchPanel({ onClose }: KeywordResearchPanelProps) {
                   key={i}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                     kw.selected
-                      ? "border-purple-500/30 bg-purple-500/5"
-                      : "border-white/5 bg-white/5"
+                      ? "border-[#0061FF]/30 bg-[#0061FF]/5"
+                      : "border-border bg-[#F8FAFC]"
                   }`}
                 >
                   <Checkbox
@@ -226,10 +226,10 @@ export function KeywordResearchPanel({ onClose }: KeywordResearchPanelProps) {
                     variant="secondary"
                     className={`text-xs ${
                       kw.difficulty === "Low"
-                        ? "bg-emerald-500/20 text-emerald-400"
+                        ? "bg-[#10B981]/10 text-[#10B981]"
                         : kw.difficulty === "Medium"
-                          ? "bg-amber-500/20 text-amber-400"
-                          : "bg-red-500/20 text-red-400"
+                          ? "bg-[#F59E0B]/10 text-[#F59E0B]"
+                          : "bg-red-50 text-red-500"
                     }`}
                   >
                     {kw.difficulty}

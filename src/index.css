@@ -43,42 +43,44 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* Dark-only theme — glassmorphism requires dark backgrounds with luminous gradients */
+/* Wonda "Paper & Ink" Light Theme */
 :root {
-    --radius: 0.625rem;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --radius: 0.5rem;
+    --background: #FFFFFF;
+    --foreground: #0F172A;
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+    --primary: #0061FF;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F8FAFC;
+    --secondary-foreground: #0F172A;
+    --muted: #F8FAFC;
+    --muted-foreground: #64748B;
+    --accent: #F8FAFC;
+    --accent-foreground: #0F172A;
+    --destructive: #EF4444;
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #0061FF;
+    --chart-1: #0061FF;
+    --chart-2: #10B981;
+    --chart-3: #F59E0B;
+    --chart-4: #8B5CF6;
+    --chart-5: #EC4899;
+    --sidebar: #F8FAFC;
+    --sidebar-foreground: #0F172A;
+    --sidebar-primary: #0061FF;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F1F5F9;
+    --sidebar-accent-foreground: #0F172A;
+    --sidebar-border: #E2E8F0;
+    --sidebar-ring: #0061FF;
 }
 
 @layer base {
@@ -87,27 +89,24 @@
     }
     body {
         @apply bg-background text-foreground;
-        background:
-            radial-gradient(ellipse at 20% 50%, hsl(250 60% 15% / 0.4), transparent 50%),
-            radial-gradient(ellipse at 80% 20%, hsl(200 60% 12% / 0.3), transparent 50%),
-            radial-gradient(ellipse at 50% 80%, hsl(280 50% 10% / 0.3), transparent 50%),
-            hsl(220 20% 6%);
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
         min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 }
 
-.glass {
-    background: hsl(220 15% 10% / 0.6);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    border: 1px solid hsl(0 0% 100% / 0.08);
+/* Wonda Card — white surface, subtle border, bottom shadow */
+.wonda-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
 }
 
-.glass-sidebar {
-    background: hsl(220 15% 8% / 0.7);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-right: 1px solid hsl(0 0% 100% / 0.06);
+/* Data mono — for slugs, URLs, keywords */
+.font-data {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 /* Rich text editor typography */
@@ -117,7 +116,7 @@
 }
 .rich-editor:empty::before {
     content: attr(data-placeholder);
-    color: oklch(0.556 0 0);
+    color: #64748B;
     pointer-events: none;
 }
 .rich-editor h2 {
@@ -125,12 +124,14 @@
     font-weight: 700;
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
 }
 .rich-editor h3 {
     font-size: 1.1rem;
     font-weight: 600;
     margin-top: 1.25rem;
     margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
 }
 .rich-editor p {
     margin-bottom: 0.75rem;
@@ -141,12 +142,13 @@
     margin-bottom: 0.75rem;
 }
 .rich-editor a {
-    color: oklch(0.488 0.243 264.376);
+    color: #0061FF;
     text-decoration: underline;
 }
 .rich-editor .faq-item {
     margin-bottom: 1rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    background: hsl(0 0% 100% / 0.03);
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
 }

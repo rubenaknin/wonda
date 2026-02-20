@@ -14,7 +14,6 @@ interface QuickActionCardProps {
   icon: LucideIcon
   actionLabel: string
   onAction: () => void
-  accentColor?: string
 }
 
 export function QuickActionCard({
@@ -23,16 +22,13 @@ export function QuickActionCard({
   icon: Icon,
   actionLabel,
   onAction,
-  accentColor = "from-purple-500/20 to-blue-500/20",
 }: QuickActionCardProps) {
   return (
-    <Card
-      className={`glass bg-gradient-to-br ${accentColor} hover:scale-[1.02] transition-transform duration-300 cursor-pointer`}
-    >
+    <Card className="wonda-card hover:border-[#0061FF] hover:shadow-md transition-all duration-200 cursor-pointer">
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-white/5">
-            <Icon className="h-5 w-5 text-purple-400" />
+          <div className="p-2 rounded-lg bg-[#0061FF]/5">
+            <Icon className="h-5 w-5 text-[#0061FF]" />
           </div>
           <CardTitle className="text-lg">{title}</CardTitle>
         </div>

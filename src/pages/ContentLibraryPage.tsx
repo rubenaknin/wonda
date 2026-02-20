@@ -58,7 +58,7 @@ export function ContentLibraryPage() {
               >
                 <Sparkles className="h-4 w-4 mr-1" />
                 Research Keywords
-                <Badge className="ml-1.5 text-[9px] px-1 py-0 bg-purple-500/20 text-purple-400">
+                <Badge className="ml-1.5 text-[9px] px-1 py-0 bg-[#0061FF]/10 text-[#0061FF]">
                   Growth
                 </Badge>
               </Button>

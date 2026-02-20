@@ -33,11 +33,11 @@ export function DashboardPage() {
       </div>
 
       {!hasAnyWebhook && (
-        <div className="glass rounded-lg p-4 text-sm text-amber-400/80 border border-amber-500/20">
+        <div className="wonda-card p-4 text-sm text-[#F59E0B] border-[#F59E0B]/20">
           No webhook URLs configured. Go to{" "}
           <button
             onClick={() => navigate(ROUTES.SETTINGS)}
-            className="underline underline-offset-2 hover:text-amber-300"
+            className="underline underline-offset-2 hover:text-[#F59E0B]/80"
           >
             Settings
           </button>{" "}
@@ -50,19 +50,19 @@ export function DashboardPage() {
           label="Total Articles"
           value={articles.length}
           icon={FileText}
-          accentColor="text-blue-400"
+          accentColor="text-[#0061FF]"
         />
         <SummaryCard
           label="AEO Health Score"
           value="78/100"
           icon={Activity}
-          accentColor="text-emerald-400"
+          accentColor="text-[#10B981]"
         />
         <SummaryCard
           label="Pending Exports"
           value={0}
           icon={Upload}
-          accentColor="text-amber-400"
+          accentColor="text-[#F59E0B]"
         />
       </div>
 
@@ -73,7 +73,6 @@ export function DashboardPage() {
           icon={FilePlus}
           actionLabel="Generate"
           onAction={() => navigate(ROUTES.CONTENT_LIBRARY)}
-          accentColor="from-purple-500/20 to-indigo-500/20"
         />
         <QuickActionCard
           title="Refresh Existing Content"
@@ -81,7 +80,6 @@ export function DashboardPage() {
           icon={RefreshCw}
           actionLabel="Refresh"
           onAction={handleRefreshContent}
-          accentColor="from-blue-500/20 to-cyan-500/20"
         />
         <QuickActionCard
           title="Update Company Intelligence"
@@ -89,7 +87,6 @@ export function DashboardPage() {
           icon={Brain}
           actionLabel="Update"
           onAction={() => navigate(ROUTES.COMPANY_PROFILE)}
-          accentColor="from-emerald-500/20 to-teal-500/20"
         />
       </div>
     </div>

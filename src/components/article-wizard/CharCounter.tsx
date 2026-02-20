@@ -7,9 +7,9 @@ export function CharCounter({ current, max }: CharCounterProps) {
   const ratio = current / max
   const color =
     ratio > 1
-      ? "text-red-400"
+      ? "text-red-500"
       : ratio > 0.9
-        ? "text-amber-400"
+        ? "text-[#F59E0B]"
         : "text-muted-foreground"
 
   return (

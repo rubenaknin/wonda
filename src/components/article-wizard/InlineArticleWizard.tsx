@@ -250,7 +250,7 @@ export function InlineArticleWizard({
   }
 
   return (
-    <Card className="glass">
+    <Card className="wonda-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle>
           {editArticleId ? "Edit Article" : "New Article"}
@@ -269,7 +269,7 @@ export function InlineArticleWizard({
 
         <div>{renderStep()}</div>
 
-        <div className="flex justify-between pt-4 border-t border-white/5">
+        <div className="flex justify-between pt-4 border-t border-border">
           <Button
             variant="ghost"
             onClick={() => dispatch({ type: "PREV_STEP" })}

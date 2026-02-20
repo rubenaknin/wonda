@@ -30,10 +30,10 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
               <div
                 className={`h-2 w-10 rounded-full transition-colors ${
                   isCompleted
-                    ? "bg-purple-500"
+                    ? "bg-[#0061FF]"
                     : isCurrent
-                      ? "bg-purple-500/60"
-                      : "bg-white/10"
+                      ? "bg-[#0061FF]/40"
+                      : "bg-border"
                 }`}
               />
               <span

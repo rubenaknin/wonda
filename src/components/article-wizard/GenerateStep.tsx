@@ -186,18 +186,18 @@ export function GenerateStep({
       </div>
 
       {profileIncomplete && (
-        <div className="rounded-lg p-4 border border-amber-500/20 bg-amber-500/10 space-y-2">
-          <div className="flex items-center gap-2 text-amber-400 font-medium text-sm">
+        <div className="rounded-lg p-4 border border-[#F59E0B]/20 bg-[#F59E0B]/5 space-y-2">
+          <div className="flex items-center gap-2 text-[#F59E0B] font-medium text-sm">
             <AlertTriangle className="h-4 w-4" />
             Company Profile Incomplete ({profileCompletion}%)
           </div>
-          <p className="text-xs text-amber-400/80">
+          <p className="text-xs text-[#F59E0B]/80">
             Complete your company profile before generating articles. This ensures your brand voice, URLs, and intelligence bank are used in content generation.
           </p>
           <Button
             size="sm"
             variant="outline"
-            className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+            className="border-[#F59E0B]/30 text-[#F59E0B] hover:bg-[#F59E0B]/5"
             onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
           >
             Complete Profile
@@ -206,18 +206,18 @@ export function GenerateStep({
       )}
 
       {!canGenerate && !profileIncomplete && (
-        <div className="rounded-lg p-4 border border-red-500/20 bg-red-500/10 space-y-2">
-          <div className="flex items-center gap-2 text-red-400 font-medium text-sm">
+        <div className="rounded-lg p-4 border border-red-500/20 bg-red-50 space-y-2">
+          <div className="flex items-center gap-2 text-red-500 font-medium text-sm">
             <AlertTriangle className="h-4 w-4" />
             Plan Limit Reached
           </div>
-          <p className="text-xs text-red-400/80">
+          <p className="text-xs text-red-500/70">
             You've used all {articlesRemaining === 0 ? "your" : ""} articles for this billing cycle. Upgrade your plan to continue generating.
           </p>
           <Button
             size="sm"
             variant="outline"
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+            className="border-red-500/30 text-red-500 hover:bg-red-50"
             onClick={() => navigate(ROUTES.SETTINGS)}
           >
             Upgrade Plan
@@ -225,7 +225,7 @@ export function GenerateStep({
         </div>
       )}
 
-      <div className="glass rounded-lg p-6 space-y-4">
+      <div className="wonda-card p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Keyword:</span>
@@ -257,7 +257,7 @@ export function GenerateStep({
           </div>
         </div>
       ) : progress === 100 ? (
-        <div className="text-sm text-emerald-400 font-medium">
+        <div className="text-sm text-[#10B981] font-medium">
           Article generated successfully! Click Next to review and edit.
         </div>
       ) : (

@@ -148,7 +148,7 @@ export function CsvUploadPanel({ onClose }: CsvUploadPanelProps) {
   }
 
   return (
-    <Card className="glass">
+    <Card className="wonda-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
@@ -161,7 +161,7 @@ export function CsvUploadPanel({ onClose }: CsvUploadPanelProps) {
       <CardContent className="space-y-4">
         {keywords.length === 0 ? (
           <div
-            className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-white/20 transition-colors"
+            className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-[#0061FF]/30 transition-colors"
             onClick={() => fileInputRef.current?.click()}
           >
             <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
@@ -201,10 +201,10 @@ export function CsvUploadPanel({ onClose }: CsvUploadPanelProps) {
               </div>
             </div>
 
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-white/5">
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/5">
+                  <TableRow className="border-border">
                     <TableHead className="w-10">
                       <Checkbox
                         checked={keywords.every((kw) => kw.selected)}
@@ -222,7 +222,7 @@ export function CsvUploadPanel({ onClose }: CsvUploadPanelProps) {
                 </TableHeader>
                 <TableBody>
                   {keywords.map((kw, i) => (
-                    <TableRow key={i} className="border-white/5">
+                    <TableRow key={i} className="border-border">
                       <TableCell>
                         <Checkbox
                           checked={kw.selected}
@@ -243,10 +243,10 @@ export function CsvUploadPanel({ onClose }: CsvUploadPanelProps) {
                                 variant="secondary"
                                 className={`text-xs ${
                                   kw.difficulty === "Low"
-                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    ? "bg-[#10B981]/10 text-[#10B981]"
                                     : kw.difficulty === "Medium"
-                                      ? "bg-amber-500/20 text-amber-400"
-                                      : "bg-red-500/20 text-red-400"
+                                      ? "bg-[#F59E0B]/10 text-[#F59E0B]"
+                                      : "bg-red-50 text-red-500"
                                 }`}
                               >
                                 {kw.difficulty}

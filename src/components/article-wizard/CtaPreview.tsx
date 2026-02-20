@@ -9,11 +9,11 @@ export function CtaPreview({ text, url }: CtaPreviewProps) {
       <h4 className="text-sm font-medium text-muted-foreground">
         CTA Preview
       </h4>
-      <div className="glass rounded-lg p-6 text-center space-y-3">
+      <div className="wonda-card p-6 text-center space-y-3">
         <p className="text-sm text-muted-foreground">
           Ready to get started?
         </p>
-        <div className="inline-flex items-center justify-center rounded-md bg-purple-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-purple-700 transition-colors">
+        <div className="inline-flex items-center justify-center rounded-md bg-[#0061FF] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#0061FF]/90 transition-colors">
           {text || "Book a Demo"}
         </div>
         <p className="text-xs text-muted-foreground break-all">

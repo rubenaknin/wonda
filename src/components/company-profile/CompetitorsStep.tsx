@@ -93,7 +93,7 @@ export function CompetitorsStep({ profile, onUpdate }: CompetitorsStepProps) {
           {profile.competitors.map((comp) => (
             <div
               key={comp.id}
-              className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+              className="flex items-center justify-between rounded-lg bg-[#F8FAFC] border border-border px-3 py-2"
             >
               <div>
                 <p className="text-sm font-medium">{comp.name}</p>

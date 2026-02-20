@@ -8,8 +8,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ onCreateArticle }: EmptyStateProps) {
   return (
-    <Card className="glass p-12 flex flex-col items-center justify-center text-center">
-      <div className="p-3 rounded-full bg-white/5 mb-4">
+    <Card className="wonda-card p-12 flex flex-col items-center justify-center text-center">
+      <div className="p-3 rounded-full bg-[#F8FAFC] mb-4">
         <FileText className="h-8 w-8 text-muted-foreground" />
       </div>
       <h3 className="text-lg font-semibold text-muted-foreground">

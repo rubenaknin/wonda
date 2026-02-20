@@ -97,15 +97,15 @@ export function MetadataStep({
 
         <CtaPreview text={ctaText} url={ctaUrl} />
 
-        <div className="glass rounded-lg p-4 space-y-2">
+        <div className="wonda-card p-4 space-y-2">
           <h4 className="text-sm font-medium text-muted-foreground">
             Search Result Preview
           </h4>
           <div className="space-y-1">
-            <p className="text-blue-400 text-base font-medium truncate">
+            <p className="text-[#0061FF] text-base font-medium truncate">
               {metaTitle || "Your article title will appear here"}
             </p>
-            <p className="text-xs text-emerald-400">
+            <p className="text-xs text-[#10B981]">
               yoursite.com/blog/your-slug
             </p>
             <p className="text-sm text-muted-foreground line-clamp-2">

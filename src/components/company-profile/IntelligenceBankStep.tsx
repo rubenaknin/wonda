@@ -52,12 +52,12 @@ export function IntelligenceBankStep({
         </p>
       </div>
 
-      <ScrollArea className="h-[360px] rounded-lg border border-white/5 p-1">
+      <ScrollArea className="h-[360px] rounded-lg border border-border p-1">
         <div className="space-y-1 p-2">
           {profile.intelligenceBank.map((question) => (
             <div
               key={question.id}
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-white/5 transition-colors"
+              className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-[#F8FAFC] transition-colors"
             >
               <Label
                 htmlFor={question.id}

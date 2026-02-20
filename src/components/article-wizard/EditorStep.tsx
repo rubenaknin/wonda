@@ -64,7 +64,7 @@ export function EditorStep({
                 <AccordionItem
                   key={item.id}
                   value={item.id}
-                  className="glass rounded-lg border border-white/5 px-4"
+                  className="wonda-card border-border px-4"
                 >
                   <AccordionTrigger className="hover:no-underline py-3">
                     <span className="text-sm font-medium text-left flex-1 mr-2">

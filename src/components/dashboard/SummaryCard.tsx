@@ -12,12 +12,12 @@ export function SummaryCard({
   label,
   value,
   icon: Icon,
-  accentColor = "text-purple-400",
+  accentColor = "text-[#0061FF]",
 }: SummaryCardProps) {
   return (
-    <Card className="glass">
+    <Card className="wonda-card">
       <CardContent className="flex items-center gap-4 p-5">
-        <div className="p-2.5 rounded-lg bg-white/5">
+        <div className="p-2.5 rounded-lg bg-[#F8FAFC] border border-border">
           <Icon className={`h-5 w-5 ${accentColor}`} />
         </div>
         <div>
