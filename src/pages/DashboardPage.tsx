@@ -6,7 +6,6 @@ import {
   Brain,
   FileText,
   TrendingUp,
-  CheckCircle,
   Globe,
   ArrowUpRight,
   Sparkles,
@@ -40,7 +39,8 @@ export function DashboardPage() {
   const { user } = useAuth()
 
   const draftCount = articles.filter((a) => a.status === "draft").length
-  const publishedCount = articles.filter((a) => a.status === "published").length
+  const existingCount = articles.filter((a) => a.origin !== "wonda").length
+  const wondaCount = articles.filter((a) => a.origin === "wonda").length
 
   // Read GSC data from localStorage
   let gscData: GscData | null = null
@@ -158,11 +158,11 @@ export function DashboardPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SummaryCard
           label="Total Articles"
           value={articles.length}
-          subtitle={publishedCount > 0 ? `${publishedCount} published` : undefined}
+          subtitle={`${existingCount} existing · ${wondaCount} Wonda${draftCount > 0 ? ` · ${draftCount} ready to publish` : ""}`}
           icon={FileText}
           accentColor="text-[#0061FF]"
         />
@@ -193,13 +193,6 @@ export function DashboardPage() {
             </Button>
           )}
         </SummaryCard>
-        <SummaryCard
-          label="Ready to Publish"
-          value={draftCount}
-          subtitle={draftCount > 0 ? "Draft articles awaiting review" : "No drafts yet"}
-          icon={CheckCircle}
-          accentColor="text-[#F59E0B]"
-        />
         <PageSpeedCard />
       </div>
 

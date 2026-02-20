@@ -62,7 +62,7 @@ export function PageSpeedCard() {
   const [data, setData] = useState<PageSpeedData | null>(null)
   const [running, setRunning] = useState(false)
 
-  const publishedArticles = articles.filter(
+  const articlesWithContent = articles.filter(
     (a) => a.status === "published" || a.status === "draft"
   )
 
@@ -75,13 +75,18 @@ export function PageSpeedCard() {
     }
   }, [])
 
-  // Check if we need to auto-run (every 24h)
+  // Auto-run on mount: always show results. Refresh every 24h.
   useEffect(() => {
-    if (!data || publishedArticles.length === 0) return
-    const lastRun = new Date(data.lastRun)
-    const now = new Date()
-    const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60)
-    if (hoursSinceLastRun >= 24) {
+    if (articlesWithContent.length === 0 && articles.length === 0) return
+    if (data) {
+      const lastRun = new Date(data.lastRun)
+      const now = new Date()
+      const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60)
+      if (hoursSinceLastRun >= 24) {
+        runAudit()
+      }
+    } else {
+      // No data yet — auto-run immediately
       runAudit()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -90,7 +95,7 @@ export function PageSpeedCard() {
     setRunning(true)
     // Simulate audit delay
     await new Promise((r) => setTimeout(r, 2000))
-    const result = generateMockData(publishedArticles.length)
+    const result = generateMockData(Math.max(articlesWithContent.length, 1))
     setData(result)
     localStorage.setItem(PAGESPEED_KEY, JSON.stringify(result))
     setRunning(false)
@@ -126,7 +131,7 @@ export function PageSpeedCard() {
             size="sm"
             className="h-7 w-7 p-0"
             onClick={runAudit}
-            disabled={running || publishedArticles.length === 0}
+            disabled={running || articles.length === 0}
             title="Run audit"
           >
             {running ? (
@@ -140,11 +145,11 @@ export function PageSpeedCard() {
         {!data && !running && (
           <div className="text-center py-4">
             <p className="text-sm text-muted-foreground mb-3">
-              {publishedArticles.length === 0
-                ? "Publish articles to run PageSpeed audits"
+              {articles.length === 0
+                ? "Add articles to run PageSpeed audits"
                 : "Run your first audit to see scores"}
             </p>
-            {publishedArticles.length > 0 && (
+            {articles.length > 0 && (
               <Button size="sm" variant="outline" onClick={runAudit}>
                 <Gauge className="h-3.5 w-3.5 mr-1.5" />
                 Run Audit

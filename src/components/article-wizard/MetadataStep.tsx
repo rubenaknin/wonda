@@ -16,17 +16,7 @@ interface MetadataStepProps {
   updatedAt?: string
   onUpdateMeta: (field: "metaTitle" | "metaDescription" | "metaImageUrl", value: string) => void
   onUpdateCta: (field: "ctaText" | "ctaUrl", value: string) => void
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  onUpdateDate?: (field: "createdAt" | "updatedAt", value: string) => void
 }
 
 export function MetadataStep({
@@ -39,6 +29,7 @@ export function MetadataStep({
   updatedAt,
   onUpdateMeta,
   onUpdateCta,
+  onUpdateDate,
 }: MetadataStepProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -129,21 +120,41 @@ export function MetadataStep({
 
         {/* Dates */}
         {(createdAt || updatedAt) && (
-          <div className="pt-3 border-t border-border space-y-2">
+          <div className="pt-3 border-t border-border space-y-3">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
               <span className="font-medium">Dates</span>
             </div>
             {createdAt && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Created</span>
-                <span>{formatDate(createdAt)}</span>
+              <div className="space-y-1">
+                <Label htmlFor="date-created" className="text-xs">Created</Label>
+                <Input
+                  id="date-created"
+                  type="date"
+                  className="h-8 text-sm"
+                  value={createdAt ? new Date(createdAt).toISOString().split("T")[0] : ""}
+                  onChange={(e) => {
+                    if (e.target.value && onUpdateDate) {
+                      onUpdateDate("createdAt", new Date(e.target.value).toISOString())
+                    }
+                  }}
+                />
               </div>
             )}
             {updatedAt && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Last updated</span>
-                <span>{formatDate(updatedAt)}</span>
+              <div className="space-y-1">
+                <Label htmlFor="date-updated" className="text-xs">Last updated</Label>
+                <Input
+                  id="date-updated"
+                  type="date"
+                  className="h-8 text-sm"
+                  value={updatedAt ? new Date(updatedAt).toISOString().split("T")[0] : ""}
+                  onChange={(e) => {
+                    if (e.target.value && onUpdateDate) {
+                      onUpdateDate("updatedAt", new Date(e.target.value).toISOString())
+                    }
+                  }}
+                />
               </div>
             )}
           </div>

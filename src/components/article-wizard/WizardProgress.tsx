@@ -14,9 +14,10 @@ const STEP_LABELS: Record<WizardStep, string> = {
 interface WizardProgressProps {
   currentStep: WizardStep
   visibleSteps?: WizardStep[]
+  onStepClick?: (step: WizardStep) => void
 }
 
-export function WizardProgress({ currentStep, visibleSteps }: WizardProgressProps) {
+export function WizardProgress({ currentStep, visibleSteps, onStepClick }: WizardProgressProps) {
   const steps = visibleSteps || WIZARD_STEPS
   const currentIndex = steps.indexOf(currentStep)
 
@@ -25,10 +26,16 @@ export function WizardProgress({ currentStep, visibleSteps }: WizardProgressProp
       {steps.map((step, i) => {
         const isCompleted = i < currentIndex
         const isCurrent = i === currentIndex
+        const isClickable = onStepClick && (isCompleted || isCurrent || i <= currentIndex + 1)
 
         return (
           <div key={step} className="flex items-center gap-1">
-            <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              className={`flex flex-col items-center gap-1 ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+              onClick={() => isClickable && onStepClick(step)}
+              disabled={!isClickable}
+            >
               <div
                 className={`h-2 w-10 rounded-full transition-colors ${
                   isCompleted
@@ -42,12 +49,14 @@ export function WizardProgress({ currentStep, visibleSteps }: WizardProgressProp
                 className={`text-[10px] ${
                   isCurrent
                     ? "text-foreground font-medium"
-                    : "text-muted-foreground"
+                    : isClickable
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground"
                 }`}
               >
                 {STEP_LABELS[step]}
               </span>
-            </div>
+            </button>
           </div>
         )
       })}

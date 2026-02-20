@@ -1,9 +1,12 @@
+import { useState } from "react"
+import { Monitor, Smartphone } from "lucide-react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import type { Article } from "@/types"
 
 interface ArticlePreviewModalProps {
@@ -12,21 +15,45 @@ interface ArticlePreviewModalProps {
   onClose: () => void
 }
 
+type PreviewMode = "desktop" | "mobile"
+
 export function ArticlePreviewModal({
   article,
   open,
   onClose,
 }: ArticlePreviewModalProps) {
+  const [mode, setMode] = useState<PreviewMode>("desktop")
+
   if (!article) return null
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base">
               Article Preview
             </DialogTitle>
+            <div className="hidden md:flex items-center gap-1 bg-[#F8FAFC] rounded-lg p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-7 w-7 p-0 ${mode === "desktop" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"}`}
+                onClick={() => setMode("desktop")}
+                title="Desktop preview"
+              >
+                <Monitor className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-7 w-7 p-0 ${mode === "mobile" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground"}`}
+                onClick={() => setMode("mobile")}
+                title="Mobile preview"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
             Rendered with blog styling &middot; {article.keyword}
@@ -34,20 +61,24 @@ export function ArticlePreviewModal({
         </DialogHeader>
 
         {/* Blog-styled preview */}
-        <div className="flex-1 overflow-auto">
-          <div className="bg-white">
+        <div className="flex-1 overflow-auto bg-[#F0F0F0] flex justify-center">
+          <div
+            className={`bg-white transition-all duration-200 ${
+              mode === "mobile" ? "w-[375px] shadow-xl my-4 rounded-xl overflow-hidden" : "w-full"
+            }`}
+          >
             {/* Simulated blog header bar */}
             <div className="bg-[#F8FAFC] border-b border-border px-8 py-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <div className="h-5 w-5 rounded-full bg-border" />
-                <span className="font-medium text-foreground">
+                <span className="font-medium text-foreground truncate">
                   {article.slug ? `yoursite.com/blog/${article.slug}` : "yoursite.com/blog"}
                 </span>
               </div>
             </div>
 
             {/* Article content with blog CSS */}
-            <article className="px-8 py-8 max-w-2xl mx-auto">
+            <article className={`py-8 mx-auto ${mode === "mobile" ? "px-4 max-w-full" : "px-8 max-w-2xl"}`}>
               {/* Category badge */}
               <div className="mb-4">
                 <span className="text-xs font-medium uppercase tracking-wider text-[#0061FF]">
@@ -56,7 +87,7 @@ export function ArticlePreviewModal({
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold tracking-tight leading-tight mb-4">
+              <h1 className={`font-bold tracking-tight leading-tight mb-4 ${mode === "mobile" ? "text-2xl" : "text-3xl"}`}>
                 {article.title || article.keyword}
               </h1>
 

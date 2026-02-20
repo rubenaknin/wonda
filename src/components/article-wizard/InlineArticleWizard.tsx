@@ -64,12 +64,12 @@ export function InlineArticleWizard({
       // Coming from table Generate action
       return ["generate", "editor", "metadata", "export"]
     }
-    if (hasExistingContent && startStep && ["editor", "export"].includes(startStep)) {
-      // Editing existing article with content - only show Editor/Meta/Export
+    if (editArticleId) {
+      // Editing any existing article — never show keyword/slug/category/generate
       return ["editor", "metadata", "export"]
     }
     return ["keyword", "slug", "category", "generate", "editor", "metadata", "export"]
-  }, [skipPreSteps, hasExistingContent, startStep])
+  }, [skipPreSteps, editArticleId])
 
   const visibleStepIndex = visibleSteps.indexOf(state.currentStep)
   const isFirstVisibleStep = visibleStepIndex === 0
@@ -301,6 +301,11 @@ export function InlineArticleWizard({
             onUpdateCta={(f, v) =>
               dispatch({ type: "UPDATE_CTA", field: f, value: v })
             }
+            onUpdateDate={(field, value) => {
+              if (editArticleId) {
+                updateArticle(editArticleId, { [field]: value })
+              }
+            }}
           />
         )
       }
@@ -338,11 +343,12 @@ export function InlineArticleWizard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs gap-1 text-muted-foreground hover:text-[#F59E0B]"
+                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-[#F59E0B]"
                 onClick={handleRefreshAeo}
-                title="Refresh AEO"
+                title="Full refresh — uses 1 article credit"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
+                <span>Refresh (1 credit)</span>
               </Button>
               <Button
                 variant="ghost"
@@ -366,7 +372,11 @@ export function InlineArticleWizard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <WizardProgress currentStep={state.currentStep} visibleSteps={visibleSteps} />
+        <WizardProgress
+          currentStep={state.currentStep}
+          visibleSteps={visibleSteps}
+          onStepClick={(step) => dispatch({ type: "GO_TO_STEP", step })}
+        />
 
         <div>{renderStep()}</div>
 

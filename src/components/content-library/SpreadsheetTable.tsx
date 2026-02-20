@@ -27,13 +27,15 @@ import {
   EyeOff,
   GripVertical,
   Sparkles,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useArticles } from "@/context/ArticlesContext"
-import { formatRelativeTime } from "@/lib/date"
+// formatRelativeTime no longer used — dates are now editable date inputs
 import {
   FilterModal,
   matchesFilterGroup,
@@ -73,7 +75,7 @@ const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
 const SEEDED_KEY = "wonda_articles_seeded"
 const TABLE_VERSION_KEY = "wonda_table_version"
-const CURRENT_TABLE_VERSION = "3" // bump to force reset of stale localStorage views
+const CURRENT_TABLE_VERSION = "4" // bump to force reset of stale localStorage views
 
 // Column id → friendly label
 const COLUMN_LABELS: Record<string, string> = {
@@ -83,6 +85,7 @@ const COLUMN_LABELS: Record<string, string> = {
   slug: "Slug",
   category: "Category",
   status: "Status",
+  origin: "Source",
   metaTitle: "Meta Title",
   metaDescription: "Meta Description",
   createdAt: "Created",
@@ -96,6 +99,7 @@ const FILTERABLE_COLUMNS = [
   { id: "slug", label: "Slug" },
   { id: "category", label: "Category" },
   { id: "status", label: "Status" },
+  { id: "origin", label: "Source" },
   { id: "metaTitle", label: "Meta Title" },
   { id: "metaDescription", label: "Meta Description" },
 ]
@@ -105,13 +109,14 @@ const DEFAULT_COLUMN_ORDER = [
   "action",
   "keyword",
   "title",
-  "slug",
-  "category",
   "status",
-  "metaTitle",
-  "metaDescription",
+  "origin",
   "createdAt",
   "updatedAt",
+  "slug",
+  "category",
+  "metaTitle",
+  "metaDescription",
 ]
 
 const DEFAULT_VISIBILITY: VisibilityState = {
@@ -120,6 +125,9 @@ const DEFAULT_VISIBILITY: VisibilityState = {
   metaTitle: false,
   metaDescription: false,
 }
+
+// Threshold for flagging stale articles (30 days)
+const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000
 
 const emptyFilterGroup: FilterGroup = { conjunction: "and", rules: [] }
 
@@ -216,6 +224,7 @@ function generateSeedArticles(): Article[] {
       slug,
       category: "blog" as const,
       status: "published" as const,
+      origin: "existing" as const,
       bodyHtml: `<h1>${title}</h1><p>Article content for ${keyword}.</p>`,
       faqHtml: "",
       faqItems: [],
@@ -420,7 +429,7 @@ export function SpreadsheetTable({
   onGenerateArticle,
   onPreviewArticle,
 }: SpreadsheetTableProps) {
-  const { addArticle, updateArticle } = useArticles()
+  const { addArticle, updateArticle, deleteArticle } = useArticles()
 
   // Track which article IDs are "new" inline rows
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
@@ -683,6 +692,26 @@ export function SpreadsheetTable({
           )
         },
       },
+      origin: {
+        accessorKey: "origin",
+        header: "Source",
+        size: 100,
+        cell: ({ getValue }) => {
+          const origin = getValue<string>()
+          const isWonda = origin === "wonda"
+          return (
+            <Badge
+              className={`text-xs ${
+                isWonda
+                  ? "bg-[#0061FF]/10 text-[#0061FF]"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {isWonda ? "Wonda" : "Existing"}
+            </Badge>
+          )
+        },
+      },
       metaTitle: {
         accessorKey: "metaTitle",
         header: "Meta Title",
@@ -706,22 +735,56 @@ export function SpreadsheetTable({
       createdAt: {
         accessorKey: "createdAt",
         header: "Created",
-        size: 130,
-        cell: ({ getValue }) => (
-          <span className="text-xs text-muted-foreground">
-            {formatRelativeTime(getValue<string>())}
-          </span>
-        ),
+        size: 150,
+        cell: ({ row }) => {
+          const article = row.original
+          const dateStr = article.createdAt
+          const isStale = Date.now() - new Date(dateStr).getTime() > STALE_THRESHOLD_MS
+          return (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="date"
+                className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-text w-[100px] [&::-webkit-calendar-picker-indicator]:hidden"
+                value={dateStr ? new Date(dateStr).toISOString().split("T")[0] : ""}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleInlineCellUpdate(article.id, "createdAt", new Date(e.target.value).toISOString())
+                  }
+                }}
+              />
+              {isStale && (
+                <span title="Over 1 month old — consider refreshing"><AlertTriangle className="h-3 w-3 text-[#F59E0B] shrink-0" /></span>
+              )}
+            </div>
+          )
+        },
       },
       updatedAt: {
         accessorKey: "updatedAt",
         header: "Updated",
-        size: 130,
-        cell: ({ getValue }) => (
-          <span className="text-xs text-muted-foreground">
-            {formatRelativeTime(getValue<string>())}
-          </span>
-        ),
+        size: 150,
+        cell: ({ row }) => {
+          const article = row.original
+          const dateStr = article.updatedAt
+          const isStale = Date.now() - new Date(dateStr).getTime() > STALE_THRESHOLD_MS
+          return (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="date"
+                className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-text w-[100px] [&::-webkit-calendar-picker-indicator]:hidden"
+                value={dateStr ? new Date(dateStr).toISOString().split("T")[0] : ""}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleInlineCellUpdate(article.id, "updatedAt", new Date(e.target.value).toISOString())
+                  }
+                }}
+              />
+              {isStale && (
+                <span title="Over 1 month old — consider refreshing"><AlertTriangle className="h-3 w-3 text-[#F59E0B] shrink-0" /></span>
+              )}
+            </div>
+          )
+        },
       },
     }),
     [onEditArticle, onGenerateArticle, onPreviewArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle]
@@ -822,7 +885,7 @@ export function SpreadsheetTable({
     const newView: TableView = {
       id: crypto.randomUUID(),
       name: `View ${views.length + 1}`,
-      columnVisibility: {},
+      columnVisibility: DEFAULT_VISIBILITY,
       columnOrder: DEFAULT_COLUMN_ORDER,
       sorting: [],
       globalFilter: "",
@@ -833,7 +896,7 @@ export function SpreadsheetTable({
     persistViews(updated)
     setActiveViewId(newView.id)
     localStorage.setItem(ACTIVE_VIEW_KEY, newView.id)
-    setColumnVisibility({})
+    setColumnVisibility(DEFAULT_VISIBILITY)
     setColumnOrder(DEFAULT_COLUMN_ORDER)
     setSorting([])
     setGlobalFilter("")
@@ -879,6 +942,7 @@ export function SpreadsheetTable({
       slug: "",
       category: "blog",
       status: "pending",
+      origin: "wonda",
       bodyHtml: "",
       faqHtml: "",
       faqItems: [],
@@ -916,6 +980,18 @@ export function SpreadsheetTable({
     URL.revokeObjectURL(url)
     toast.success("CSV exported")
   }, [table, columnOrder, columnVisibility])
+
+  const selectedRowCount = Object.keys(rowSelection).length
+
+  const handleBulkDelete = useCallback(() => {
+    const selectedRows = table.getSelectedRowModel().rows
+    if (selectedRows.length === 0) return
+    for (const row of selectedRows) {
+      deleteArticle(row.original.id)
+    }
+    setRowSelection({})
+    toast.success(`${selectedRows.length} article${selectedRows.length !== 1 ? "s" : ""} deleted`)
+  }, [table, deleteArticle])
 
   const handleToggleColumn = useCallback(
     (colId: string) => {
@@ -1060,6 +1136,32 @@ export function SpreadsheetTable({
           New Article
         </Button>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedRowCount > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 border-b border-border bg-[#0061FF]/5">
+          <span className="text-xs font-medium">
+            {selectedRowCount} article{selectedRowCount !== 1 ? "s" : ""} selected
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={handleBulkDelete}
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete Selected
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => setRowSelection({})}
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
 
       {/* Active filter chips */}
       {activeFilterCount > 0 && (

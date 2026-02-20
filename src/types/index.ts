@@ -138,6 +138,7 @@ export interface Article {
   updatedAt: string
   metaImageUrl?: string
   source?: "new" | "sitemap"
+  origin?: "existing" | "wonda"
   contentPath?: string
   authorId?: string
 }
