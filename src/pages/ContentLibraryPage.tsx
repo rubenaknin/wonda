@@ -5,6 +5,7 @@ import { usePlan } from "@/context/PlanContext"
 import { SpreadsheetTable } from "@/components/content-library/SpreadsheetTable"
 import { InlineArticleWizard } from "@/components/article-wizard/InlineArticleWizard"
 import { UpgradeModal } from "@/components/plan/UpgradeModal"
+import { ArticlePreviewModal } from "@/components/content-library/ArticlePreviewModal"
 import { CsvUploadPanel } from "@/components/content-library/CsvUploadPanel"
 import { KeywordResearchPanel } from "@/components/content-library/KeywordResearchPanel"
 import { parseSitemapUrls } from "@/lib/sitemap"
@@ -22,6 +23,7 @@ export function ContentLibraryPage() {
   const { canGenerate } = usePlan()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [previewArticleId, setPreviewArticleId] = useState<string | null>(null)
   const sitemapLoaded = useRef(false)
 
   // Load sitemap articles on mount
@@ -48,7 +50,6 @@ export function ContentLibraryPage() {
       return
     }
 
-    // Auto-fill slug and category if empty before opening wizard
     const article = getArticleById(articleId)
     if (article) {
       const updates: Record<string, string> = {}
@@ -75,13 +76,18 @@ export function ContentLibraryPage() {
     setPanel({ type: "wizard", articleId, startStep: "generate", skipPreSteps: true })
   }
 
+  const handlePreviewArticle = (articleId: string) => {
+    setPreviewArticleId(articleId)
+  }
+
   const handleClosePanel = () => {
     setPanel(null)
   }
 
+  const previewArticle = previewArticleId ? getArticleById(previewArticleId) ?? null : null
+
   return (
     <div className="space-y-3">
-      {/* Subtle header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-foreground">
           Content Library
@@ -108,12 +114,19 @@ export function ContentLibraryPage() {
         onClose={() => setShowUpgradeModal(false)}
       />
 
+      <ArticlePreviewModal
+        article={previewArticle}
+        open={Boolean(previewArticleId)}
+        onClose={() => setPreviewArticleId(null)}
+      />
+
       {!panel && (
         <SpreadsheetTable
           articles={articles}
           onEditArticle={handleEditArticle}
           onOpenUpload={() => setPanel({ type: "csv" })}
           onGenerateArticle={handleGenerateArticle}
+          onPreviewArticle={handlePreviewArticle}
         />
       )}
     </div>

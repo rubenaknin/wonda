@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { QuickActionCard } from "@/components/dashboard/QuickActionCard"
 import { SummaryCard } from "@/components/dashboard/SummaryCard"
+import { PageSpeedCard } from "@/components/dashboard/PageSpeedCard"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useWebhook } from "@/context/WebhookContext"
@@ -157,7 +158,7 @@ export function DashboardPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           label="Total Articles"
           value={articles.length}
@@ -199,6 +200,7 @@ export function DashboardPage() {
           icon={CheckCircle}
           accentColor="text-[#F59E0B]"
         />
+        <PageSpeedCard />
       </div>
 
       {/* Plan Info */}

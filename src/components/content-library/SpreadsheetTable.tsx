@@ -18,7 +18,6 @@ import {
   Download,
   Upload,
   Play,
-  Trash2,
   Pencil,
   RefreshCw,
   Send,
@@ -27,23 +26,13 @@ import {
   Eye,
   EyeOff,
   GripVertical,
-  ArrowRight,
   Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
 import { useArticles } from "@/context/ArticlesContext"
-import { useWebhook } from "@/context/WebhookContext"
-import { sendWebhook } from "@/lib/webhook"
 import { formatRelativeTime } from "@/lib/date"
 import {
   FilterModal,
@@ -68,6 +57,7 @@ interface SpreadsheetTableProps {
   onEditArticle: (articleId: string, startStep?: WizardStep) => void
   onOpenUpload: () => void
   onGenerateArticle: (articleId: string) => void
+  onPreviewArticle: (articleId: string) => void
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -428,9 +418,9 @@ export function SpreadsheetTable({
   onEditArticle,
   onOpenUpload,
   onGenerateArticle,
+  onPreviewArticle,
 }: SpreadsheetTableProps) {
-  const { addArticle, updateArticle, deleteArticle } = useArticles()
-  const { webhookUrls } = useWebhook()
+  const { addArticle, updateArticle } = useArticles()
 
   // Track which article IDs are "new" inline rows
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
@@ -605,10 +595,10 @@ export function SpreadsheetTable({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  title="Preview in editor"
+                  title="Preview article"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onEditArticle(article.id, "editor")
+                    onPreviewArticle(article.id)
                   }}
                 >
                   <Eye className="h-3.5 w-3.5" />
@@ -734,7 +724,7 @@ export function SpreadsheetTable({
         ),
       },
     }),
-    [onEditArticle, onGenerateArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle]
+    [onEditArticle, onGenerateArticle, onPreviewArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle]
   )
 
   // Build ordered columns array: select + rowNumber + ordered data cols + actions col
@@ -782,51 +772,16 @@ export function SpreadsheetTable({
       cell: ({ row }) => {
         const article = row.original
         return (
-          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEditArticle(article.id)}>
-                  <Pencil className="h-3.5 w-3.5 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {article.bodyHtml && (
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      await sendWebhook(
-                        webhookUrls.generateArticle,
-                        "refresh_aeo",
-                        { articleId: article.id, keyword: article.keyword }
-                      )
-                      toast.success("AEO refresh triggered")
-                    }}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                    Refresh AEO
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => {
-                    deleteArticle(article.id)
-                    setNewRowIds((prev) => {
-                      const next = new Set(prev)
-                      next.delete(article.id)
-                      return next
-                    })
-                    toast.success("Article deleted")
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              title="Edit article"
+              onClick={() => onEditArticle(article.id)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
           </div>
         )
       },
@@ -835,7 +790,7 @@ export function SpreadsheetTable({
     }
 
     return [...fixed, ...ordered, actionsCol]
-  }, [columnOrder, columnDefs, onEditArticle, deleteArticle, webhookUrls])
+  }, [columnOrder, columnDefs, onEditArticle])
 
   const table = useReactTable({
     data: filteredByAdvanced,

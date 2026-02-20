@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from "react"
 import { toast } from "sonner"
-import { X } from "lucide-react"
+import { X, Trash2, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useArticleWizard } from "@/hooks/useArticleWizard"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
+import { useWebhook } from "@/context/WebhookContext"
+import { sendWebhook } from "@/lib/webhook"
 import { WizardProgress } from "./WizardProgress"
 import { KeywordStep } from "./KeywordStep"
 import { SlugStep } from "./SlugStep"
@@ -48,16 +50,26 @@ export function InlineArticleWizard({
   onClose,
 }: InlineArticleWizardProps) {
   const { state, dispatch, canProceed } = useArticleWizard()
-  const { addArticle, updateArticle, getArticleById } = useArticles()
+  const { addArticle, updateArticle, getArticleById, deleteArticle } = useArticles()
   const { profile } = useCompanyProfile()
+  const { webhookUrls } = useWebhook()
 
-  // Steps to show based on skipPreSteps
+  // Determine if this is editing an article that already has content
+  const existingArticle = editArticleId ? getArticleById(editArticleId) : null
+  const hasExistingContent = Boolean(existingArticle?.bodyHtml)
+
+  // Steps to show based on context
   const visibleSteps = useMemo<WizardStepType[]>(() => {
     if (skipPreSteps) {
+      // Coming from table Generate action
       return ["generate", "editor", "metadata", "export"]
     }
+    if (hasExistingContent && startStep && ["editor", "export"].includes(startStep)) {
+      // Editing existing article with content - only show Editor/Meta/Export
+      return ["editor", "metadata", "export"]
+    }
     return ["keyword", "slug", "category", "generate", "editor", "metadata", "export"]
-  }, [skipPreSteps])
+  }, [skipPreSteps, hasExistingContent, startStep])
 
   const visibleStepIndex = visibleSteps.indexOf(state.currentStep)
   const isFirstVisibleStep = visibleStepIndex === 0
@@ -164,6 +176,23 @@ export function InlineArticleWizard({
     onClose()
   }
 
+  const handleDelete = () => {
+    if (!editArticleId) return
+    deleteArticle(editArticleId)
+    toast.success("Article deleted")
+    onClose()
+  }
+
+  const handleRefreshAeo = async () => {
+    if (!editArticleId) return
+    await sendWebhook(
+      webhookUrls.generateArticle,
+      "refresh_aeo",
+      { articleId: editArticleId, keyword: state.keyword }
+    )
+    toast.success("AEO refresh triggered")
+  }
+
   const handlePrevStep = () => {
     const currentVisibleIdx = visibleSteps.indexOf(state.currentStep)
     if (currentVisibleIdx > 0) {
@@ -257,7 +286,6 @@ export function InlineArticleWizard({
           />
         )
       case "metadata": {
-        const existingArticle = editArticleId ? getArticleById(editArticleId) : null
         return (
           <MetadataStep
             metaTitle={state.metaTitle}
@@ -297,21 +325,45 @@ export function InlineArticleWizard({
           <CardTitle>
             {editArticleId ? "Edit Article" : "New Article"}
           </CardTitle>
-          {skipPreSteps && state.keyword && (
+          {(skipPreSteps || hasExistingContent) && state.keyword && (
             <p className="text-sm text-muted-foreground mt-1">
               {state.keyword}
               {state.title && state.title !== state.keyword && ` — ${state.title}`}
             </p>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={handleSaveAndClose}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {editArticleId && hasExistingContent && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1 text-muted-foreground hover:text-[#F59E0B]"
+                onClick={handleRefreshAeo}
+                title="Refresh AEO"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive"
+                onClick={handleDelete}
+                title="Delete article"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={handleSaveAndClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <WizardProgress currentStep={state.currentStep} visibleSteps={visibleSteps} />
