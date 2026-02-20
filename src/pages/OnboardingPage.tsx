@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { Check, Loader2 } from "lucide-react"
+import { Check, Loader2, Trash2, Plus, ArrowRight, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -9,27 +9,67 @@ import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { writeUserDoc } from "@/lib/firestore"
 import { aiFillFromDomain } from "@/lib/ai-fill"
 import { isPersonalEmail } from "@/lib/auth-helpers"
+import type { Competitor, IntelligenceBankQuestion, CompanyProfile } from "@/types"
 
-const ONBOARDING_STEPS = [
-  { label: "Analyzing your domain...", delay: 1500 },
-  { label: "Generating company profile...", delay: 2000 },
-  { label: "Building your intelligence bank...", delay: 1500 },
-  { label: "Preparing your content engine...", delay: 1000 },
+const ANALYSIS_STEPS = [
+  { label: "Analyzing your search presence", delay: 1500 },
+  { label: "Identifying your top competitors", delay: 2000 },
+  { label: "Looking for your top opportunities", delay: 1500 },
+  { label: "Generating your content strategy", delay: 1000 },
 ]
 
-type Phase = "loading" | "domain-input" | "animating" | "complete"
+const TOTAL_ONBOARDING_STEPS = 7 // dots indicator
+
+const TIPS = [
+  { title: "Fresh content is winning content", desc: "Fresh content earns 70% more citations in AI search." },
+  { title: "Consistency beats perfection", desc: "Publishing 2-4 articles per week drives 3x more organic traffic." },
+  { title: "AI-optimized content matters", desc: "Pages optimized for AI search get 40% more visibility." },
+  { title: "Internal linking is key", desc: "Strong internal linking boosts page authority by up to 50%." },
+]
+
+type Phase = "loading" | "domain-input" | "analyzing" | "review-competitors" | "review-questions" | "complete"
+
+function DotIndicator({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          className={`rounded-full transition-all duration-300 ${
+            i === current
+              ? "w-3 h-3 bg-foreground"
+              : i < current
+                ? "w-2 h-2 bg-foreground/40"
+                : "w-2 h-2 bg-foreground/15"
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
 
 export function OnboardingPage() {
   const navigate = useNavigate()
   const { user, firebaseUser, refreshUser } = useAuth()
   const { updateProfile } = useCompanyProfile()
   const [phase, setPhase] = useState<Phase>("loading")
-  const [currentStep, setCurrentStep] = useState(0)
+  const [analysisStep, setAnalysisStep] = useState(0)
   const [customDomain, setCustomDomain] = useState("")
+  const [domain, setDomain] = useState("")
+  const [tipIndex, setTipIndex] = useState(0)
   const animationStarted = useRef(false)
   const domainChecked = useRef(false)
   const userRef = useRef(user)
   userRef.current = user
+
+  // Generated data for review steps
+  const [competitors, setCompetitors] = useState<Competitor[]>([])
+  const [questions, setQuestions] = useState<IntelligenceBankQuestion[]>([])
+  const [profileData, setProfileData] = useState<Partial<CompanyProfile>>({})
+
+  // New competitor inputs
+  const [newCompName, setNewCompName] = useState("")
+  const [newCompDomain, setNewCompDomain] = useState("")
 
   // Redirect if not logged in or already onboarded
   useEffect(() => {
@@ -50,53 +90,74 @@ export function OnboardingPage() {
     if (isPersonalEmail(user.email)) {
       setPhase("domain-input")
     } else {
-      // Work email — start animation immediately with email domain
-      startAnimation(user.domain)
+      startAnalysis(user.domain)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
-  const startAnimation = useCallback(async (domain: string) => {
+  // Rotate tips during analysis
+  useEffect(() => {
+    if (phase !== "analyzing") return
+    const interval = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % TIPS.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [phase])
+
+  const startAnalysis = useCallback(async (dom: string) => {
     if (animationStarted.current) return
     animationStarted.current = true
-    setPhase("animating")
-    setCurrentStep(0)
+    setDomain(dom)
+    setPhase("analyzing")
+    setAnalysisStep(0)
 
-    for (let i = 0; i < ONBOARDING_STEPS.length; i++) {
-      setCurrentStep(i)
-      await new Promise((r) => setTimeout(r, ONBOARDING_STEPS[i].delay))
+    // Run animation steps
+    for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
+      setAnalysisStep(i)
+      await new Promise((r) => setTimeout(r, ANALYSIS_STEPS[i].delay))
     }
-    setCurrentStep(ONBOARDING_STEPS.length)
+    setAnalysisStep(ANALYSIS_STEPS.length)
 
-    // Fill profile from domain
-    if (domain) {
-      const profileData = aiFillFromDomain(domain)
-      updateProfile(profileData)
-    }
+    // Generate profile data
+    const data = aiFillFromDomain(dom)
+    setProfileData(data)
+    setCompetitors(data.competitors || [])
+    setQuestions(data.intelligenceBank || [])
 
-    // Mark onboarding complete in Firestore
+    // Small delay then go to review competitors
+    await new Promise((r) => setTimeout(r, 500))
+    setPhase("review-competitors")
+  }, [])
+
+  const handleDomainSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const dom = customDomain.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
+    if (!dom) return
+    startAnalysis(dom)
+  }
+
+  const handleFinishOnboarding = async () => {
+    // Save all profile data with reviewed competitors and questions
+    updateProfile({
+      ...profileData,
+      competitors,
+      intelligenceBank: questions,
+    })
+
+    // Mark onboarding complete
     const currentUser = userRef.current
     if (currentUser?.uid) {
       try {
         await writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
         await refreshUser()
       } catch {
-        // Still allow user to proceed
+        // Still proceed
       }
     }
-
     setPhase("complete")
-  }, [updateProfile, refreshUser])
-
-  const handleDomainSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const domain = customDomain.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
-    if (!domain) return
-    startAnimation(domain)
   }
 
   const handleNavigate = async (path: string) => {
-    // Ensure onboarding is marked complete before navigating
     const currentUser = userRef.current
     if (currentUser?.uid && !currentUser.onboardingComplete) {
       try {
@@ -109,30 +170,121 @@ export function OnboardingPage() {
     navigate(path, { replace: true })
   }
 
-  const isAnimationDone = currentStep >= ONBOARDING_STEPS.length
+  const handleSkipCompetitors = () => {
+    setCompetitors([])
+    setPhase("review-questions")
+  }
+
+  const handleSkipQuestions = () => {
+    setQuestions([])
+    handleFinishOnboardingWithData([], [])
+  }
+
+  const handleFinishOnboardingWithData = async (
+    finalCompetitors: Competitor[],
+    finalQuestions: IntelligenceBankQuestion[]
+  ) => {
+    updateProfile({
+      ...profileData,
+      competitors: finalCompetitors,
+      intelligenceBank: finalQuestions,
+    })
+
+    const currentUser = userRef.current
+    if (currentUser?.uid) {
+      try {
+        await writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
+        await refreshUser()
+      } catch {
+        // Continue
+      }
+    }
+    setPhase("complete")
+  }
+
+  const handleRemoveCompetitor = (id: string) => {
+    setCompetitors((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  const handleAddCompetitor = () => {
+    const name = newCompName.trim()
+    if (!name) return
+    setCompetitors((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name,
+        url: newCompDomain.trim() || `${name.toLowerCase().replace(/\s+/g, "")}.com`,
+      },
+    ])
+    setNewCompName("")
+    setNewCompDomain("")
+  }
+
+  const handleRemoveQuestion = (id: string) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== id))
+  }
+
+  const [newQuestion, setNewQuestion] = useState("")
+  const handleAddQuestion = () => {
+    const text = newQuestion.trim()
+    if (!text) return
+    setQuestions((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), text, enabled: true },
+    ])
+    setNewQuestion("")
+  }
+
+  const isAnalysisDone = analysisStep >= ANALYSIS_STEPS.length
+  const analysisProgress = (analysisStep / ANALYSIS_STEPS.length) * 100
+
+  // Compute which dot is active
+  const dotStep = (() => {
+    switch (phase) {
+      case "domain-input": return 0
+      case "analyzing": return 1
+      case "review-competitors": return 2
+      case "review-questions": return 3
+      case "complete": return 4
+      default: return 0
+    }
+  })()
+
+  const companyName = profileData.name || domain.split(".")[0] || ""
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-      <div className="w-full max-w-lg p-8 text-center space-y-8">
-        <img src="/wonda-logo.png" alt="Wonda" className="h-8 mx-auto" />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Header */}
+      <div className="flex items-center justify-between px-8 py-6 max-w-5xl mx-auto">
+        <div className="text-xl font-bold tracking-tight">
+          {companyName || "Wonda"}
+        </div>
+        {phase !== "loading" && (
+          <DotIndicator total={TOTAL_ONBOARDING_STEPS} current={dotStep} />
+        )}
+      </div>
 
+      <div className="max-w-4xl mx-auto px-8 pb-16">
         {/* Loading Phase */}
         {phase === "loading" && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-24">
             <Loader2 className="h-8 w-8 animate-spin text-[#0061FF]" />
           </div>
         )}
 
-        {/* Domain Input Phase (personal email only) */}
+        {/* Domain Input Phase */}
         {phase === "domain-input" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold">What's your company domain?</h2>
-              <p className="text-sm text-muted-foreground">
-                We'll use this to set up your company profile and generate content tailored to your brand.
+          <div className="max-w-md mx-auto pt-16 space-y-8 animate-in fade-in duration-300">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight">
+                What's your company domain?
+              </h1>
+              <p className="text-muted-foreground">
+                We'll use this to analyze your market, identify competitors, and generate a tailored content strategy.
               </p>
             </div>
-            <form onSubmit={handleDomainSubmit} className="space-y-4 text-left">
+            <form onSubmit={handleDomainSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="domain">Domain</Label>
                 <Input
@@ -141,32 +293,53 @@ export function OnboardingPage() {
                   onChange={(e) => setCustomDomain(e.target.value)}
                   placeholder="yourcompany.com"
                   required
+                  className="text-base h-12"
+                  autoFocus
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={!customDomain.trim()}>
+              <Button type="submit" className="w-full h-11" disabled={!customDomain.trim()}>
                 Continue
+                <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </form>
           </div>
         )}
 
-        {/* Animation Phase */}
-        {(phase === "animating" || phase === "complete") && (
-          <>
-            <div className="space-y-4 text-left">
-              {ONBOARDING_STEPS.map((step, index) => {
-                const isDone = index < currentStep
-                const isActive = index === currentStep && !isAnimationDone
+        {/* Analysis Phase */}
+        {phase === "analyzing" && (
+          <div className="pt-12 space-y-8 animate-in fade-in duration-300">
+            <div className="space-y-2 text-center">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Stand by for Your Content Strategy
+              </h1>
+              <p className="text-muted-foreground">
+                Loading Competitive Report for {domain}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-2 rounded-full bg-border overflow-hidden max-w-xl mx-auto">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#0061FF] transition-all duration-700"
+                style={{ width: `${analysisProgress}%` }}
+              />
+            </div>
+
+            {/* Steps checklist */}
+            <div className="max-w-xl mx-auto rounded-xl border border-border bg-white p-6 space-y-4">
+              {ANALYSIS_STEPS.map((step, index) => {
+                const isDone = index < analysisStep
+                const isActive = index === analysisStep && !isAnalysisDone
 
                 return (
                   <div
                     key={index}
                     className={`flex items-center gap-3 transition-opacity duration-300 ${
-                      index > currentStep && !isAnimationDone ? "opacity-30" : "opacity-100"
+                      index > analysisStep && !isAnalysisDone ? "opacity-30" : "opacity-100"
                     }`}
                   >
                     <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                      {isDone ? (
+                      {isDone || (isAnalysisDone && index === ANALYSIS_STEPS.length - 1) ? (
                         <div className="w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center">
                           <Check className="h-3.5 w-3.5 text-white" />
                         </div>
@@ -178,7 +351,7 @@ export function OnboardingPage() {
                     </div>
                     <span
                       className={`text-sm ${
-                        isDone
+                        isDone || isAnalysisDone
                           ? "text-[#10B981] font-medium"
                           : isActive
                             ? "text-foreground font-medium"
@@ -192,25 +365,257 @@ export function OnboardingPage() {
               })}
             </div>
 
-            {phase === "complete" && (
-              <div className="space-y-4 pt-4 animate-in fade-in duration-500">
-                <p className="text-sm text-muted-foreground">
-                  Your workspace is ready! What would you like to do first?
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleNavigate("/company-profile")}
-                  >
-                    Review Company Profile
-                  </Button>
-                  <Button onClick={() => handleNavigate("/content-library")}>
-                    Generate Your First Article
-                  </Button>
+            {/* Rotating tip */}
+            <div className="max-w-xl mx-auto rounded-xl border border-[#10B981]/20 bg-[#10B981]/5 p-5">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-[#10B981]/10 shrink-0">
+                  <Sparkles className="h-4 w-4 text-[#10B981]" />
+                </div>
+                <div className="min-h-[40px]">
+                  <p className="text-sm font-medium">{TIPS[tipIndex].title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{TIPS[tipIndex].desc}</p>
                 </div>
               </div>
-            )}
-          </>
+              <div className="flex items-center justify-center gap-1.5 mt-3">
+                {TIPS.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === tipIndex ? "w-3 h-2 bg-[#10B981]" : "w-2 h-2 bg-[#10B981]/30"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Review Competitors */}
+        {phase === "review-competitors" && (
+          <div className="pt-12 space-y-8 animate-in fade-in duration-300">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Review your competitors
+              </h1>
+              <p className="text-muted-foreground max-w-2xl">
+                We'll use this list to compare your brand's visibility against competitors across topics to identify gaps and opportunities. Review the initial list of competitors we've identified based on your brand and audience.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Header */}
+              <div className="grid grid-cols-[1fr_1fr_40px] gap-3 px-1">
+                <div className="text-sm font-medium">
+                  Competitors <span className="text-muted-foreground font-normal">({competitors.length})</span>
+                </div>
+                <div className="text-sm font-medium">Domain</div>
+                <div />
+              </div>
+
+              {/* Rows */}
+              {competitors.map((comp) => (
+                <div key={comp.id} className="grid grid-cols-[1fr_1fr_40px] gap-3 items-center">
+                  <Input
+                    value={comp.name}
+                    onChange={(e) =>
+                      setCompetitors((prev) =>
+                        prev.map((c) => (c.id === comp.id ? { ...c, name: e.target.value } : c))
+                      )
+                    }
+                    className="h-11"
+                  />
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={`https://www.google.com/s2/favicons?domain=${comp.url}&sz=16`}
+                      alt=""
+                      className="w-4 h-4 shrink-0"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+                    />
+                    <Input
+                      value={comp.url}
+                      onChange={(e) =>
+                        setCompetitors((prev) =>
+                          prev.map((c) => (c.id === comp.id ? { ...c, url: e.target.value } : c))
+                        )
+                      }
+                      className="h-11"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleRemoveCompetitor(comp.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+
+              {/* Add new competitor */}
+              <div className="grid grid-cols-[1fr_1fr_40px] gap-3 items-center pt-2 border-t border-border">
+                <Input
+                  value={newCompName}
+                  onChange={(e) => setNewCompName(e.target.value)}
+                  placeholder="Competitor name"
+                  className="h-11"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCompetitor())}
+                />
+                <Input
+                  value={newCompDomain}
+                  onChange={(e) => setNewCompDomain(e.target.value)}
+                  placeholder="domain.com"
+                  className="h-11"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCompetitor())}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={handleAddCompetitor}
+                  disabled={!newCompName.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <Button
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={handleSkipCompetitors}
+              >
+                Skip <span className="text-xs ml-1 text-muted-foreground/60">(not recommended)</span>
+              </Button>
+              <Button onClick={() => setPhase("review-questions")} className="h-11 px-6">
+                Continue
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Review Questions / Prompts */}
+        {phase === "review-questions" && (
+          <div className="pt-12 space-y-8 animate-in fade-in duration-300">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Review your initial prompts
+              </h1>
+              <p className="text-muted-foreground max-w-2xl">
+                We've built your initial prompt list based on your brand, audience, and competitors — targeting the searches where you want to be mentioned and cited. Later, you'll scale this by adding custom prompts and your own first-party data sources.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Header */}
+              <div className="grid grid-cols-[1fr_40px] gap-3 px-1">
+                <div className="text-sm font-medium">
+                  Prompt <span className="text-muted-foreground font-normal">({questions.length})</span>
+                </div>
+                <div />
+              </div>
+
+              {/* Rows */}
+              {questions.map((q) => (
+                <div key={q.id} className="grid grid-cols-[1fr_40px] gap-3 items-center">
+                  <Input
+                    value={q.text}
+                    onChange={(e) =>
+                      setQuestions((prev) =>
+                        prev.map((item) =>
+                          item.id === q.id ? { ...item, text: e.target.value } : item
+                        )
+                      )
+                    }
+                    className="h-11"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleRemoveQuestion(q.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+
+              {/* Add new question */}
+              <div className="grid grid-cols-[1fr_40px] gap-3 items-center pt-2 border-t border-border">
+                <Input
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  placeholder="Add a new prompt..."
+                  className="h-11"
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddQuestion())}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={handleAddQuestion}
+                  disabled={!newQuestion.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setPhase("review-competitors")}
+              >
+                Back
+              </Button>
+              <Button
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={handleSkipQuestions}
+              >
+                Skip <span className="text-xs ml-1 text-muted-foreground/60">(not recommended)</span>
+              </Button>
+              <Button onClick={handleFinishOnboarding} className="h-11 px-6">
+                Continue
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Complete */}
+        {phase === "complete" && (
+          <div className="max-w-lg mx-auto pt-24 text-center space-y-8 animate-in fade-in duration-500">
+            <div className="w-16 h-16 rounded-full bg-[#10B981]/10 flex items-center justify-center mx-auto">
+              <Check className="h-8 w-8 text-[#10B981]" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">
+                You're all set!
+              </h1>
+              <p className="text-muted-foreground">
+                Your workspace is ready. What would you like to do first?
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => handleNavigate("/company-profile")}
+              >
+                Review Company Profile
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => handleNavigate("/content-library")}
+              >
+                Generate Your First Article
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
