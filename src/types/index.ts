@@ -131,6 +131,7 @@ export interface Article {
   selectedQuestions: string[]
   createdAt: string
   updatedAt: string
+  metaImageUrl?: string
   source?: "new" | "sitemap"
   contentPath?: string
   authorId?: string

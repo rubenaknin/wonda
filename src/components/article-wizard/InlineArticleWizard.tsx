@@ -68,6 +68,7 @@ export function InlineArticleWizard({
             faqItems: article.faqItems || [],
             metaTitle: article.metaTitle,
             metaDescription: article.metaDescription,
+            metaImageUrl: article.metaImageUrl || "",
             ctaText: article.ctaText,
             ctaUrl: article.ctaUrl,
             title: article.title,
@@ -111,6 +112,7 @@ export function InlineArticleWizard({
         faqItems: state.faqItems,
         metaTitle: state.metaTitle,
         metaDescription: state.metaDescription,
+        metaImageUrl: state.metaImageUrl || undefined,
         ctaText: state.ctaText,
         ctaUrl: state.ctaUrl,
         internalLinks: state.internalLinks,
@@ -132,6 +134,7 @@ export function InlineArticleWizard({
         faqItems: state.faqItems,
         metaTitle: state.metaTitle,
         metaDescription: state.metaDescription,
+        metaImageUrl: state.metaImageUrl || undefined,
         ctaText: state.ctaText,
         ctaUrl: state.ctaUrl,
         internalLinks: state.internalLinks,
@@ -225,13 +228,17 @@ export function InlineArticleWizard({
             onRemoveFaqItem={(id) => dispatch({ type: "REMOVE_FAQ_ITEM", id })}
           />
         )
-      case "metadata":
+      case "metadata": {
+        const existingArticle = editArticleId ? getArticleById(editArticleId) : null
         return (
           <MetadataStep
             metaTitle={state.metaTitle}
             metaDescription={state.metaDescription}
+            metaImageUrl={state.metaImageUrl}
             ctaText={state.ctaText}
             ctaUrl={state.ctaUrl}
+            createdAt={existingArticle?.createdAt}
+            updatedAt={existingArticle?.updatedAt}
             onUpdateMeta={(f, v) =>
               dispatch({ type: "UPDATE_META", field: f, value: v })
             }
@@ -240,6 +247,7 @@ export function InlineArticleWizard({
             }
           />
         )
+      }
       case "export":
         return (
           <ExportStep

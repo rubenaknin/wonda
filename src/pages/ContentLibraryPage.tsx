@@ -118,7 +118,7 @@ export function ContentLibraryPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setPanel({ type: "csv" })}>
               <Upload className="h-4 w-4 mr-1" />
-              Upload CSV
+              Upload
             </Button>
             {isGrowthOrAbove && (
               <Button

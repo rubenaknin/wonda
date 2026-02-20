@@ -1,5 +1,13 @@
 import { useLocation, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Building2, Library, Shield, LogOut } from "lucide-react"
+import {
+  LayoutDashboard,
+  Building2,
+  Library,
+  Shield,
+  LogOut,
+  Settings,
+  PanelLeftClose,
+} from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -10,20 +18,20 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/lib/constants"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
-import { usePlan } from "@/context/PlanContext"
 import { useAuth } from "@/context/AuthContext"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { profileCompletion } = useCompanyProfile()
-  const { plan, articlesRemaining } = usePlan()
   const { user, signOut } = useAuth()
+  const { toggleSidebar } = useSidebar()
 
   const profileIncomplete = profileCompletion < 100
 
@@ -34,12 +42,20 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="bg-[#F8FAFC] border-r border-border">
-      <SidebarHeader className="p-6">
+      <SidebarHeader className="px-3 py-4 flex flex-row items-center justify-between">
         <img
           src="/wonda-logo.png"
           alt="Wonda"
-          style={{ height: 24, width: "auto", maxWidth: 120, objectFit: "contain" }}
+          style={{ height: 22, width: "auto", maxWidth: 100, objectFit: "contain" }}
         />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          onClick={toggleSidebar}
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </Button>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -65,6 +81,12 @@ export function AppSidebar() {
                   >
                     <Building2 className="h-4 w-4" />
                     <span className="flex-1">Company Profile</span>
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto text-[10px] px-1.5 py-0 bg-[#F59E0B]/10 text-[#F59E0B]"
+                    >
+                      {profileCompletion}%
+                    </Badge>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
@@ -96,50 +118,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border">
-        {user && (
-          <div className="text-xs text-muted-foreground truncate mb-2">
-            {user.email}
-          </div>
-        )}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="capitalize">{plan.tier} Plan</span>
-          <span>
-            {articlesRemaining === Infinity
-              ? "Unlimited"
-              : `${articlesRemaining} articles left`}
-          </span>
-        </div>
-        {user?.planTier === "trial" && (
-          <div className="mt-1">
-            <Badge className="text-[9px] bg-[#F59E0B]/10 text-[#F59E0B]">
-              Trial
-            </Badge>
-          </div>
-        )}
-        {profileIncomplete && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Profile</span>
-              <span>{profileCompletion}%</span>
-            </div>
-            <div className="h-1 rounded-full bg-border overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#0061FF] transition-all duration-300"
-                style={{ width: `${profileCompletion}%` }}
-              />
-            </div>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full mt-2 text-muted-foreground hover:text-destructive justify-start"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-3.5 w-3.5 mr-2" />
-          Sign Out
-        </Button>
+      <SidebarFooter className="p-2 border-t border-border">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={location.pathname === ROUTES.SETTINGS}
+              onClick={() => navigate(ROUTES.SETTINGS)}
+              className="transition-colors duration-200"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="flex-1">Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleSignOut}
+              className="transition-colors duration-200 text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="flex-1">Sign Out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )

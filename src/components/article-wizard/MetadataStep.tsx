@@ -4,21 +4,39 @@ import { Label } from "@/components/ui/label"
 import { SeoTooltip } from "@/components/shared/SeoTooltip"
 import { CharCounter } from "./CharCounter"
 import { CtaPreview } from "./CtaPreview"
+import { Calendar } from "lucide-react"
 
 interface MetadataStepProps {
   metaTitle: string
   metaDescription: string
+  metaImageUrl: string
   ctaText: string
   ctaUrl: string
-  onUpdateMeta: (field: "metaTitle" | "metaDescription", value: string) => void
+  createdAt?: string
+  updatedAt?: string
+  onUpdateMeta: (field: "metaTitle" | "metaDescription" | "metaImageUrl", value: string) => void
   onUpdateCta: (field: "ctaText" | "ctaUrl", value: string) => void
+}
+
+function formatDate(iso: string): string {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 export function MetadataStep({
   metaTitle,
   metaDescription,
+  metaImageUrl,
   ctaText,
   ctaUrl,
+  createdAt,
+  updatedAt,
   onUpdateMeta,
   onUpdateCta,
 }: MetadataStepProps) {
@@ -64,6 +82,29 @@ export function MetadataStep({
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="meta-image">Meta Image URL (og:image)</Label>
+          <Input
+            id="meta-image"
+            type="url"
+            value={metaImageUrl}
+            onChange={(e) => onUpdateMeta("metaImageUrl", e.target.value)}
+            placeholder="https://yoursite.com/images/article-cover.jpg"
+          />
+          {metaImageUrl && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <img
+                src={metaImageUrl}
+                alt="Meta preview"
+                className="w-full h-32 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none"
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="cta-text-edit">
             <SeoTooltip term="cta">CTA Text</SeoTooltip>
           </Label>
@@ -85,6 +126,28 @@ export function MetadataStep({
             placeholder="https://yoursite.com/demo"
           />
         </div>
+
+        {/* Dates */}
+        {(createdAt || updatedAt) && (
+          <div className="pt-3 border-t border-border space-y-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              <span className="font-medium">Dates</span>
+            </div>
+            {createdAt && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Created</span>
+                <span>{formatDate(createdAt)}</span>
+              </div>
+            )}
+            {updatedAt && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Last updated</span>
+                <span>{formatDate(updatedAt)}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">

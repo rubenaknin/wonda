@@ -29,11 +29,8 @@ function computeProfileCompletion(profile: CompanyProfile): number {
     profile.description.trim().length > 0,
     profile.valueProp.trim().length > 0,
     profile.websiteUrl.trim().length > 0,
-    profile.sitemapUrl.trim().length > 0,
-    profile.contentSitemapUrls.length > 0,
     profile.ctaText.trim().length > 0,
     profile.ctaUrl.trim().length > 0,
-    profile.competitors.length > 0,
     profile.intelligenceBank.length > 0,
   ]
   const filled = checks.filter(Boolean).length

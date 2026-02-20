@@ -21,6 +21,7 @@ interface WizardState {
   ctaUrl: string
   title: string
   authorId: string
+  metaImageUrl: string
 }
 
 type WizardAction =
@@ -51,7 +52,7 @@ type WizardAction =
   | { type: "UPDATE_FAQ_ITEM"; id: string; field: "question" | "answer"; value: string }
   | {
       type: "UPDATE_META"
-      field: "metaTitle" | "metaDescription"
+      field: "metaTitle" | "metaDescription" | "metaImageUrl"
       value: string
     }
   | { type: "UPDATE_CTA"; field: "ctaText" | "ctaUrl"; value: string }
@@ -80,6 +81,7 @@ const initialState: WizardState = {
   ctaUrl: "",
   title: "",
   authorId: "",
+  metaImageUrl: "",
 }
 
 function getStepIndex(step: WizardStep): number {
