@@ -8,7 +8,8 @@ export interface CompanyProfile {
   valueProp: string
   websiteUrl: string
   sitemapUrl: string
-  blogSitemapUrl: string
+  contentSitemapUrls: string[]
+  contentPaths: string[]
   // Step 2 - The Goal
   ctaText: string
   ctaUrl: string
@@ -16,6 +17,9 @@ export interface CompanyProfile {
   competitors: Competitor[]
   // Step 4 - Intelligence Bank
   intelligenceBank: IntelligenceBankQuestion[]
+  // Integrations
+  gscConnected: boolean
+  gscPropertyUrl: string
 }
 
 export interface Competitor {
@@ -97,6 +101,8 @@ export interface Article {
   selectedQuestions: string[]
   createdAt: string
   updatedAt: string
+  source?: "new" | "sitemap"
+  contentPath?: string
 }
 
 // ============================================================
@@ -110,3 +116,25 @@ export type WizardStep =
   | "editor"
   | "metadata"
   | "export"
+
+// ============================================================
+// CMS Publishing Integration
+// ============================================================
+export type CmsType = "framer" | "webflow" | "wordpress" | "google-sheets" | "api"
+
+export interface CmsIntegration {
+  type: CmsType
+  enabled: boolean
+  config: Record<string, string>
+}
+
+// ============================================================
+// Google Search Console
+// ============================================================
+export interface GscData {
+  nonBrandedClicks: number
+  nonBrandedImpressions: number
+  blogClicks: number
+  blogImpressions: number
+  lastUpdated: string
+}

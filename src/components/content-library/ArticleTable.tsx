@@ -41,11 +41,12 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
 }
 
 interface ArticleTableProps {
+  filteredArticles: Article[]
   onEditArticle: (articleId: string, startStep?: WizardStep) => void
 }
 
-export function ArticleTable({ onEditArticle }: ArticleTableProps) {
-  const { articles, deleteArticle } = useArticles()
+export function ArticleTable({ filteredArticles, onEditArticle }: ArticleTableProps) {
+  const { deleteArticle } = useArticles()
   const { webhookUrls } = useWebhook()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -59,10 +60,10 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
   }
 
   const toggleAll = () => {
-    if (selectedIds.size === articles.length) {
+    if (selectedIds.size === filteredArticles.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(articles.map((a) => a.id)))
+      setSelectedIds(new Set(filteredArticles.map((a) => a.id)))
     }
   }
 
@@ -80,7 +81,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
   }
 
   const handleExportSelected = async () => {
-    const selected = articles.filter((a) => selectedIds.has(a.id))
+    const selected = filteredArticles.filter((a) => selectedIds.has(a.id))
     if (selected.length === 0) {
       toast.error("No articles selected")
       return
@@ -133,7 +134,7 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
               <TableHead className="w-10">
                 <Checkbox
                   checked={
-                    articles.length > 0 && selectedIds.size === articles.length
+                    filteredArticles.length > 0 && selectedIds.size === filteredArticles.length
                   }
                   onCheckedChange={toggleAll}
                 />
@@ -143,13 +144,15 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
                 <SeoTooltip term="keyword">Keyword</SeoTooltip>
               </TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Path</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Updated</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {articles.map((article) => (
+            {filteredArticles.map((article) => (
               <TableRow
                 key={article.id}
                 className="border-border cursor-pointer"
@@ -171,6 +174,21 @@ export function ArticleTable({ onEditArticle }: ArticleTableProps) {
                   <Badge variant="secondary" className="text-xs capitalize">
                     {article.category.replace("-", " ")}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      article.source === "sitemap"
+                        ? "bg-purple-50 text-purple-600"
+                        : "bg-blue-50 text-blue-600"
+                    }`}
+                  >
+                    {article.source === "sitemap" ? "Sitemap" : "New"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {article.contentPath || "—"}
                 </TableCell>
                 <TableCell>
                   <Badge

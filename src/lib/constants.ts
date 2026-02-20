@@ -5,6 +5,8 @@ export const STORAGE_KEYS = {
   COMPANY_PROFILE: "wonda_company_profile",
   ARTICLES: "wonda_articles",
   PLAN: "wonda_plan",
+  CMS_INTEGRATION: "wonda_cms_integration",
+  GSC_DATA: "wonda_gsc_data",
 } as const
 
 export const ROUTES = {

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
+import { Sparkles, Loader2 } from "lucide-react"
 import {
   Card,
   CardHeader,
@@ -14,12 +15,23 @@ import { GoalStep } from "@/components/company-profile/GoalStep"
 import { CompetitorsStep } from "@/components/company-profile/CompetitorsStep"
 import { IntelligenceBankStep } from "@/components/company-profile/IntelligenceBankStep"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
+import { aiFillAll } from "@/lib/ai-fill"
 
 const STEPS = ["Brand DNA", "The Goal", "Competitors", "Intelligence Bank"]
 
 export function CompanyProfilePage() {
   const { profile, updateProfile } = useCompanyProfile()
   const [currentStep, setCurrentStep] = useState(0)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const handleAiFillAll = async () => {
+    setAiLoading(true)
+    await new Promise((r) => setTimeout(r, 1500))
+    const updates = aiFillAll(profile)
+    updateProfile(updates)
+    setAiLoading(false)
+    toast.success("AI filled all empty fields")
+  }
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -65,9 +77,24 @@ export function CompanyProfilePage() {
 
       <Card className="wonda-card">
         <CardHeader>
-          <CardTitle>
-            Step {currentStep + 1}: {STEPS[currentStep]}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Step {currentStep + 1}: {STEPS[currentStep]}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAiFillAll}
+              disabled={aiLoading}
+            >
+              {aiLoading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
+              AI Fill All
+            </Button>
+          </div>
           <CardDescription>
             {currentStep === 0 &&
               "Tell us the basics about your brand and value."}

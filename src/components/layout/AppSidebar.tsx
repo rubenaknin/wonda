@@ -5,7 +5,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
+  // SidebarGroupLabel removed
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -33,14 +33,14 @@ export function AppSidebar() {
   return (
     <Sidebar className="bg-[#F8FAFC] border-r border-border">
       <SidebarHeader className="p-6">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Wonda
-        </h1>
-        <p className="text-xs text-muted-foreground mt-1">SEO Content Engine</p>
+        <img
+          src="https://framerusercontent.com/images/w2pLHBtgLKf7GqP05ktHixZFL0A.png"
+          alt="Wonda"
+          style={{ height: 28, width: "auto" }}
+        />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (

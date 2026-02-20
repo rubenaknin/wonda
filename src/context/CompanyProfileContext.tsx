@@ -9,11 +9,14 @@ const emptyProfile: CompanyProfile = {
   valueProp: "",
   websiteUrl: "",
   sitemapUrl: "",
-  blogSitemapUrl: "",
+  contentSitemapUrls: [],
+  contentPaths: [],
   ctaText: "",
   ctaUrl: "",
   competitors: [],
   intelligenceBank: [],
+  gscConnected: false,
+  gscPropertyUrl: "",
 }
 
 function computeProfileCompletion(profile: CompanyProfile): number {
@@ -23,7 +26,7 @@ function computeProfileCompletion(profile: CompanyProfile): number {
     profile.valueProp.trim().length > 0,
     profile.websiteUrl.trim().length > 0,
     profile.sitemapUrl.trim().length > 0,
-    profile.blogSitemapUrl.trim().length > 0,
+    profile.contentSitemapUrls.length > 0,
     profile.ctaText.trim().length > 0,
     profile.ctaUrl.trim().length > 0,
     profile.competitors.length > 0,

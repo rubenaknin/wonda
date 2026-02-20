@@ -1,11 +1,53 @@
+import { useState } from "react"
+import { Sparkles, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import { SeoTooltip } from "@/components/shared/SeoTooltip"
+import { aiFillField } from "@/lib/ai-fill"
 import type { CompanyProfile } from "@/types"
 
 interface GoalStepProps {
   profile: CompanyProfile
   onUpdate: (partial: Partial<CompanyProfile>) => void
+}
+
+function AiFillButton({
+  fieldName,
+  profile,
+  onUpdate,
+}: {
+  fieldName: string
+  profile: CompanyProfile
+  onUpdate: (partial: Partial<CompanyProfile>) => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = async () => {
+    setLoading(true)
+    await new Promise((r) => setTimeout(r, 1000))
+    const value = aiFillField(fieldName, profile)
+    onUpdate({ [fieldName]: value })
+    setLoading(false)
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-6 w-6 p-0 text-muted-foreground hover:text-[#0061FF]"
+      onClick={handleClick}
+      disabled={loading}
+      title="AI Fill"
+    >
+      {loading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Sparkles className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  )
 }
 
 export function GoalStep({ profile, onUpdate }: GoalStepProps) {
@@ -24,7 +66,10 @@ export function GoalStep({ profile, onUpdate }: GoalStepProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cta-text">CTA Button Text</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="cta-text">CTA Button Text</Label>
+          <AiFillButton fieldName="ctaText" profile={profile} onUpdate={onUpdate} />
+        </div>
         <Input
           id="cta-text"
           value={profile.ctaText}
@@ -37,7 +82,10 @@ export function GoalStep({ profile, onUpdate }: GoalStepProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cta-url">CTA Destination URL</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="cta-url">CTA Destination URL</Label>
+          <AiFillButton fieldName="ctaUrl" profile={profile} onUpdate={onUpdate} />
+        </div>
         <Input
           id="cta-url"
           type="url"
