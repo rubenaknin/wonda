@@ -75,7 +75,7 @@ const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
 const SEEDED_KEY = "wonda_articles_seeded"
 const TABLE_VERSION_KEY = "wonda_table_version"
-const CURRENT_TABLE_VERSION = "4" // bump to force reset of stale localStorage views
+const CURRENT_TABLE_VERSION = "5" // bump to force reset of stale localStorage views
 
 // Column id → friendly label
 const COLUMN_LABELS: Record<string, string> = {
@@ -153,6 +153,28 @@ function defaultView(): TableView {
     sorting: [],
     globalFilter: "",
     filterGroup: emptyFilterGroup,
+  }
+}
+
+function existingArticlesView(): TableView {
+  return {
+    id: "existing",
+    name: "Existing Articles",
+    columnVisibility: DEFAULT_VISIBILITY,
+    columnOrder: DEFAULT_COLUMN_ORDER,
+    sorting: [],
+    globalFilter: "",
+    filterGroup: {
+      conjunction: "and",
+      rules: [
+        {
+          id: "origin-legacy",
+          column: "origin",
+          operator: "does_not_equal",
+          value: "wonda",
+        },
+      ],
+    },
   }
 }
 
@@ -460,9 +482,9 @@ export function SpreadsheetTable({
 
   // ── Views ──────────────────────────────────
   const [views, setViews] = useState<TableView[]>(() => {
-    if (migrated) return [defaultView()]
+    if (migrated) return [defaultView(), existingArticlesView()]
     const saved = loadViews()
-    return saved.length > 0 ? saved : [defaultView()]
+    return saved.length > 0 ? saved : [defaultView(), existingArticlesView()]
   })
   const [activeViewId, setActiveViewId] = useState<string>(
     () => localStorage.getItem(ACTIVE_VIEW_KEY) || views[0]?.id || "default"
@@ -707,7 +729,7 @@ export function SpreadsheetTable({
                   : "bg-slate-100 text-slate-500"
               }`}
             >
-              {isWonda ? "Wonda" : "Existing"}
+              {isWonda ? "Wonda" : "Legacy"}
             </Badge>
           )
         },
@@ -739,7 +761,6 @@ export function SpreadsheetTable({
         cell: ({ row }) => {
           const article = row.original
           const dateStr = article.createdAt
-          const isStale = Date.now() - new Date(dateStr).getTime() > STALE_THRESHOLD_MS
           return (
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <input
@@ -752,9 +773,6 @@ export function SpreadsheetTable({
                   }
                 }}
               />
-              {isStale && (
-                <span title="Over 1 month old — consider refreshing"><AlertTriangle className="h-3 w-3 text-[#F59E0B] shrink-0" /></span>
-              )}
             </div>
           )
         },
@@ -766,7 +784,9 @@ export function SpreadsheetTable({
         cell: ({ row }) => {
           const article = row.original
           const dateStr = article.updatedAt
-          const isStale = Date.now() - new Date(dateStr).getTime() > STALE_THRESHOLD_MS
+          // Stale flag: use updatedAt if it exists, otherwise createdAt
+          const staleRef = dateStr || article.createdAt
+          const isStale = staleRef ? Date.now() - new Date(staleRef).getTime() > STALE_THRESHOLD_MS : false
           return (
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <input

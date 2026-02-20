@@ -162,7 +162,7 @@ export function DashboardPage() {
         <SummaryCard
           label="Total Articles"
           value={articles.length}
-          subtitle={`${existingCount} existing · ${wondaCount} Wonda${draftCount > 0 ? ` · ${draftCount} ready to publish` : ""}`}
+          subtitle={`${existingCount} legacy · ${wondaCount} Wonda${draftCount > 0 ? ` · ${draftCount} ready to publish` : ""}`}
           icon={FileText}
           accentColor="text-[#0061FF]"
         />
