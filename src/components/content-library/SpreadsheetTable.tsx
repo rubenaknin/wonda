@@ -81,6 +81,8 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
 const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
 const SEEDED_KEY = "wonda_articles_seeded"
+const TABLE_VERSION_KEY = "wonda_table_version"
+const CURRENT_TABLE_VERSION = "2" // bump to force reset of stale localStorage views
 
 // Column id → friendly label
 const COLUMN_LABELS: Record<string, string> = {
@@ -334,8 +336,21 @@ export function SpreadsheetTable({
     localStorage.setItem(SEEDED_KEY, "1")
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Version migration: reset stale views when version bumps ──
+  const [migrated] = useState(() => {
+    const storedVersion = localStorage.getItem(TABLE_VERSION_KEY)
+    if (storedVersion !== CURRENT_TABLE_VERSION) {
+      localStorage.removeItem(VIEWS_KEY)
+      localStorage.removeItem(ACTIVE_VIEW_KEY)
+      localStorage.setItem(TABLE_VERSION_KEY, CURRENT_TABLE_VERSION)
+      return true
+    }
+    return false
+  })
+
   // ── Views ──────────────────────────────────
   const [views, setViews] = useState<TableView[]>(() => {
+    if (migrated) return [defaultView()]
     const saved = loadViews()
     return saved.length > 0 ? saved : [defaultView()]
   })
