@@ -19,6 +19,10 @@ const emptyProfile: CompanyProfile = {
   intelligenceBank: [],
   authors: [],
   authorAssignmentRules: "",
+  brandDnaPrompt: "",
+  goalPrompt: "",
+  competitorsPrompt: "",
+  intelligenceBankPrompt: "",
   gscConnected: false,
   gscPropertyUrl: "",
 }

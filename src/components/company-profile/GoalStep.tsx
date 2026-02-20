@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Sparkles, Loader2 } from "lucide-react"
+import { Sparkles, Loader2, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { SeoTooltip } from "@/components/shared/SeoTooltip"
@@ -95,6 +96,27 @@ export function GoalStep({ profile, onUpdate }: GoalStepProps) {
         />
         <p className="text-xs text-muted-foreground">
           Where should the CTA button send visitors?
+        </p>
+      </div>
+
+      {/* Prompt Instructions */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="goal-prompt" className="text-sm">
+            CTA Instructions
+          </Label>
+        </div>
+        <Textarea
+          id="goal-prompt"
+          value={profile.goalPrompt ?? ""}
+          onChange={(e) => onUpdate({ goalPrompt: e.target.value })}
+          placeholder="e.g. For comparison articles, use 'See How We Compare' as CTA text. For how-to guides, use 'Try It Free' instead."
+          rows={3}
+          className="text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Free-text instructions to control how the CTA varies across different article types.
         </p>
       </div>
     </div>

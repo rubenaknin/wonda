@@ -39,6 +39,11 @@ export interface CompanyProfile {
   // Authors
   authors: Author[]
   authorAssignmentRules: string
+  // Prompt instructions (free-text logic per section)
+  brandDnaPrompt: string
+  goalPrompt: string
+  competitorsPrompt: string
+  intelligenceBankPrompt: string
   // Integrations
   gscConnected: boolean
   gscPropertyUrl: string

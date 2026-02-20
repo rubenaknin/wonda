@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
-  Building2,
+  Brain,
   Library,
   Shield,
   LogOut,
@@ -19,19 +19,14 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { Badge } from "@/components/ui/badge"
 import { ROUTES } from "@/lib/constants"
-import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useAuth } from "@/context/AuthContext"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profileCompletion } = useCompanyProfile()
   const { user, signOut } = useAuth()
   const { setOpen } = useSidebar()
-
-  const profileIncomplete = profileCompletion < 100
 
   const handleSignOut = async () => {
     await signOut()
@@ -74,24 +69,16 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {profileIncomplete && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === ROUTES.COMPANY_PROFILE}
-                    onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
-                    tooltip="Company Profile"
-                  >
-                    <Building2 className="h-4 w-4" />
-                    <span className="flex-1">Company Profile</span>
-                    <Badge
-                      variant="secondary"
-                      className="ml-auto text-[10px] px-1.5 py-0 bg-[#F59E0B]/10 text-[#F59E0B]"
-                    >
-                      {profileCompletion}%
-                    </Badge>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={location.pathname === ROUTES.COMPANY_PROFILE}
+                  onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
+                  tooltip="Intelligence"
+                >
+                  <Brain className="h-4 w-4" />
+                  <span className="flex-1">Intelligence</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton

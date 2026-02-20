@@ -76,7 +76,7 @@ export function CompanyProfilePage() {
   return (
     <div className="space-y-8 max-w-2xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Company Profile</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Intelligence</h1>
         <p className="text-muted-foreground mt-1">
           Define your company intelligence to power AI-generated content.
         </p>

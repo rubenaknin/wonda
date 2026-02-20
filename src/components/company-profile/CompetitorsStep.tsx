@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Plus, X } from "lucide-react"
+import { Plus, X, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import type { CompanyProfile, Competitor } from "@/types"
@@ -120,6 +121,27 @@ export function CompetitorsStep({ profile, onUpdate }: CompetitorsStepProps) {
           generation.
         </p>
       )}
+
+      {/* Prompt Instructions */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="competitors-prompt" className="text-sm">
+            Competitor Instructions
+          </Label>
+        </div>
+        <Textarea
+          id="competitors-prompt"
+          value={profile.competitorsPrompt ?? ""}
+          onChange={(e) => onUpdate({ competitorsPrompt: e.target.value })}
+          placeholder="e.g. Focus on our pricing advantage vs CompetitorA. Never mention CompetitorB's enterprise features as we don't compete on that level."
+          rows={3}
+          className="text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Free-text instructions to control how competitors are referenced in generated content.
+        </p>
+      </div>
     </div>
   )
 }

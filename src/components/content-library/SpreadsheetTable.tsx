@@ -121,6 +121,13 @@ const DEFAULT_COLUMN_ORDER = [
   "updatedAt",
 ]
 
+const DEFAULT_VISIBILITY: VisibilityState = {
+  slug: false,
+  category: false,
+  metaTitle: false,
+  metaDescription: false,
+}
+
 const emptyFilterGroup: FilterGroup = { conjunction: "and", rules: [] }
 
 function loadViews(): TableView[] {
@@ -140,7 +147,7 @@ function defaultView(): TableView {
   return {
     id: "default",
     name: "All Articles",
-    columnVisibility: {},
+    columnVisibility: DEFAULT_VISIBILITY,
     columnOrder: DEFAULT_COLUMN_ORDER,
     sorting: [],
     globalFilter: "",
@@ -230,8 +237,20 @@ function ColumnManagerPanel({
   onReorder: (newOrder: string[]) => void
   onClose: () => void
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const dragItem = useRef<number | null>(null) // eslint-disable-line
   const dragOver = useRef<number | null>(null) // eslint-disable-line
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [onClose])
 
   const handleDragStart = (idx: number) => {
     dragItem.current = idx
@@ -255,7 +274,7 @@ function ColumnManagerPanel({
   }
 
   return (
-    <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-border rounded-lg shadow-lg w-56 py-1">
+    <div ref={panelRef} className="absolute top-full left-0 mt-1 z-50 bg-white border border-border rounded-lg shadow-lg w-56 py-1">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
         <span className="text-xs font-medium">Columns</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -383,7 +402,7 @@ export function SpreadsheetTable({
       action: {
         id: "action",
         header: "Next Action",
-        size: 130,
+        size: 160,
         cell: ({ row }) => {
           const article = row.original
           const { label, icon: Icon } = getNextAction(article)
@@ -393,25 +412,42 @@ export function SpreadsheetTable({
               : label === "Publish"
                 ? "text-[#10B981] hover:text-[#10B981]/80"
                 : "text-[#F59E0B] hover:text-[#F59E0B]/80"
+          const hasContent = Boolean(article.bodyHtml)
           return (
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-7 text-xs gap-1.5 ${colorClass}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (label === "Generate") {
-                  onEditArticle(article.id, getResumeStep(article))
-                } else if (label === "Publish") {
-                  onEditArticle(article.id, "export")
-                } else {
-                  onEditArticle(article.id, "editor")
-                }
-              }}
-            >
-              <Icon className="h-3 w-3" />
-              {label}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-7 text-xs gap-1.5 ${colorClass}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (label === "Generate") {
+                    onEditArticle(article.id, getResumeStep(article))
+                  } else if (label === "Publish") {
+                    onEditArticle(article.id, "export")
+                  } else {
+                    onEditArticle(article.id, "editor")
+                  }
+                }}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+              </Button>
+              {hasContent && label !== "Generate" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                  title="Preview in editor"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEditArticle(article.id, "editor")
+                  }}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           )
         },
         enableSorting: false,
@@ -922,7 +958,9 @@ export function SpreadsheetTable({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="text-left text-xs font-medium text-muted-foreground px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap"
+                    className={`text-left text-xs font-medium text-muted-foreground px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
+                      header.id === "more" ? "sticky right-0 bg-[#FAFBFC] z-20" : ""
+                    }`}
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder ? null : (
@@ -966,13 +1004,15 @@ export function SpreadsheetTable({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-border hover:bg-[#F8FAFC] cursor-pointer transition-colors"
+                  className="group/row border-b border-border hover:bg-[#F8FAFC] cursor-pointer transition-colors"
                   onClick={() => onEditArticle(row.original.id)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap"
+                      className={`px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
+                        cell.column.id === "more" ? "sticky right-0 bg-white group-hover/row:bg-[#F8FAFC]" : ""
+                      }`}
                       style={{ maxWidth: cell.column.getSize() }}
                     >
                       {flexRender(

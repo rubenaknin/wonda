@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
-import { Plus, X } from "lucide-react"
+import { Plus, X, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { generateQuestions } from "@/lib/questions"
@@ -109,6 +111,27 @@ export function IntelligenceBankStep({
           <Plus className="h-4 w-4 mr-1" />
           Add
         </Button>
+      </div>
+
+      {/* Prompt Instructions */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="intelligence-prompt" className="text-sm">
+            Intelligence Bank Instructions
+          </Label>
+        </div>
+        <Textarea
+          id="intelligence-prompt"
+          value={profile.intelligenceBankPrompt ?? ""}
+          onChange={(e) => onUpdate({ intelligenceBankPrompt: e.target.value })}
+          placeholder="e.g. Prioritize questions about pricing and ROI. Include at least 2 technical questions per article. Avoid questions about our competitors' internal processes."
+          rows={3}
+          className="text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Free-text instructions to control how intelligence bank questions are selected and used.
+        </p>
       </div>
     </div>
   )

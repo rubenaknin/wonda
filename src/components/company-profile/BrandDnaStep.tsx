@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, X, Sparkles, Loader2 } from "lucide-react"
+import { Plus, X, Sparkles, Loader2, MessageSquare } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -236,6 +236,27 @@ export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
         </Button>
         <p className="text-xs text-muted-foreground">
           Enter the URL paths where your content lives (e.g., /blog, /learn)
+        </p>
+      </div>
+
+      {/* Prompt Instructions */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="brand-dna-prompt" className="text-sm">
+            Brand DNA Instructions
+          </Label>
+        </div>
+        <Textarea
+          id="brand-dna-prompt"
+          value={profile.brandDnaPrompt ?? ""}
+          onChange={(e) => onUpdate({ brandDnaPrompt: e.target.value })}
+          placeholder="e.g. Always emphasize our sustainability mission. Avoid mentioning legacy products. Our tone should be professional but approachable."
+          rows={3}
+          className="text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Free-text instructions to control how brand information is used during content generation.
         </p>
       </div>
 
