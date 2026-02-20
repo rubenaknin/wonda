@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Brain,
   Library,
+  MessageSquare,
   Shield,
   LogOut,
   Settings,
@@ -21,12 +22,14 @@ import {
 } from "@/components/ui/sidebar"
 import { ROUTES } from "@/lib/constants"
 import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const { setOpen } = useSidebar()
+  const { sidebarOpen: chatSidebarOpen, toggleSidebar: toggleChatSidebar } = useChat()
 
   const handleSignOut = async () => {
     await signOut()
@@ -88,6 +91,17 @@ export function AppSidebar() {
                 >
                   <Brain className="h-4 w-4" />
                   <span className="flex-1">Intelligence</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={chatSidebarOpen}
+                  onClick={toggleChatSidebar}
+                  tooltip="Chat"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="flex-1">Chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

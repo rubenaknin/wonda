@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   PLAN: "wonda_plan",
   CMS_INTEGRATION: "wonda_cms_integration",
   GSC_DATA: "wonda_gsc_data",
+  CHAT_HISTORY: "wonda_chat_history",
 } as const
 
 export const ROUTES = {

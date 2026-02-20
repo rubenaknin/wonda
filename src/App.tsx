@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { WebhookProvider } from "@/context/WebhookContext"
 import { CompanyProfileProvider } from "@/context/CompanyProfileContext"
 import { ArticlesProvider } from "@/context/ArticlesContext"
+import { ChatProvider } from "@/context/ChatContext"
 import { PlanProvider } from "@/context/PlanContext"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
@@ -84,9 +85,11 @@ function AppProviders({ children }: { children: React.ReactNode }) {
           articlesUsedRemote={user?.articlesUsed}
         >
           <ArticlesProvider uid={uid}>
-            <TooltipProvider>
-              {children}
-            </TooltipProvider>
+            <ChatProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+            </ChatProvider>
           </ArticlesProvider>
         </PlanProvider>
       </CompanyProfileProvider>

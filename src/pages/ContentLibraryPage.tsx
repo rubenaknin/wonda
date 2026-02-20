@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
@@ -9,6 +9,8 @@ import { ArticlePreviewModal } from "@/components/content-library/ArticlePreview
 import { CsvUploadPanel } from "@/components/content-library/CsvUploadPanel"
 import { KeywordResearchPanel } from "@/components/content-library/KeywordResearchPanel"
 import { parseSitemapUrls } from "@/lib/sitemap"
+import { useChat } from "@/context/ChatContext"
+import type { ChatCommand } from "@/lib/chat/types"
 import type { WizardStep } from "@/types"
 
 type PanelMode =
@@ -21,10 +23,28 @@ export function ContentLibraryPage() {
   const { articles, addArticle, getArticleById, updateArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { canGenerate } = usePlan()
+  const { commandBus } = useChat()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [previewArticleId, setPreviewArticleId] = useState<string | null>(null)
   const sitemapLoaded = useRef(false)
+
+  // Subscribe to chat command bus
+  const handleChatCommand = useCallback(
+    (command: ChatCommand) => {
+      if (command.type === "open_article_wizard") {
+        const startStep = (command.payload.startStep as WizardStep) || undefined
+        setPanel({ type: "wizard", articleId: command.payload.articleId, startStep })
+      } else if (command.type === "open_article_preview") {
+        setPreviewArticleId(command.payload.articleId)
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    return commandBus.subscribe(handleChatCommand)
+  }, [commandBus, handleChatCommand])
 
   // Load sitemap articles on mount
   useEffect(() => {
