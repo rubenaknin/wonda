@@ -6,7 +6,6 @@ import {
   Shield,
   LogOut,
   Settings,
-  PanelLeftClose,
 } from "lucide-react"
 import {
   Sidebar,
@@ -21,7 +20,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/lib/constants"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useAuth } from "@/context/AuthContext"
@@ -31,7 +29,7 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const { profileCompletion } = useCompanyProfile()
   const { user, signOut } = useAuth()
-  const { toggleSidebar } = useSidebar()
+  const { setOpen } = useSidebar()
 
   const profileIncomplete = profileCompletion < 100
 
@@ -41,21 +39,25 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar className="bg-[#F8FAFC] border-r border-border">
-      <SidebarHeader className="px-3 py-4 flex flex-row items-center justify-between">
+    <Sidebar
+      collapsible="icon"
+      className="bg-[#F8FAFC] border-r border-border"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <SidebarHeader className="px-3 py-4 flex flex-row items-center gap-2 group-data-[collapsible=icon]:px-2">
         <img
           src="/wonda-logo.png"
           alt="Wonda"
+          className="group-data-[collapsible=icon]:hidden"
           style={{ height: 22, width: "auto", maxWidth: 100, objectFit: "contain" }}
         />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          onClick={toggleSidebar}
-        >
-          <PanelLeftClose className="h-4 w-4" />
-        </Button>
+        <img
+          src="/wonda-logo.png"
+          alt="Wonda"
+          className="hidden group-data-[collapsible=icon]:block"
+          style={{ height: 20, width: 20, objectFit: "contain", objectPosition: "left" }}
+        />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -65,7 +67,7 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   isActive={location.pathname === ROUTES.DASHBOARD}
                   onClick={() => navigate(ROUTES.DASHBOARD)}
-                  className="transition-colors duration-200"
+                  tooltip="Dashboard"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   <span className="flex-1">Dashboard</span>
@@ -77,7 +79,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     isActive={location.pathname === ROUTES.COMPANY_PROFILE}
                     onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
-                    className="transition-colors duration-200"
+                    tooltip="Company Profile"
                   >
                     <Building2 className="h-4 w-4" />
                     <span className="flex-1">Company Profile</span>
@@ -95,7 +97,7 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   isActive={location.pathname === ROUTES.CONTENT_LIBRARY}
                   onClick={() => navigate(ROUTES.CONTENT_LIBRARY)}
-                  className="transition-colors duration-200"
+                  tooltip="Content Library"
                 >
                   <Library className="h-4 w-4" />
                   <span className="flex-1">Content Library</span>
@@ -107,7 +109,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     isActive={location.pathname.startsWith("/admin")}
                     onClick={() => navigate(ROUTES.ADMIN)}
-                    className="transition-colors duration-200"
+                    tooltip="Admin"
                   >
                     <Shield className="h-4 w-4" />
                     <span className="flex-1">Admin</span>
@@ -124,7 +126,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               isActive={location.pathname === ROUTES.SETTINGS}
               onClick={() => navigate(ROUTES.SETTINGS)}
-              className="transition-colors duration-200"
+              tooltip="Settings"
             >
               <Settings className="h-4 w-4" />
               <span className="flex-1">Settings</span>
@@ -133,7 +135,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleSignOut}
-              className="transition-colors duration-200 text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive"
+              tooltip="Sign Out"
             >
               <LogOut className="h-4 w-4" />
               <span className="flex-1">Sign Out</span>

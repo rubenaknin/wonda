@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, Upload, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
-import { EmptyState } from "@/components/content-library/EmptyState"
 import { SpreadsheetTable } from "@/components/content-library/SpreadsheetTable"
 import { InlineArticleWizard } from "@/components/article-wizard/InlineArticleWizard"
 import { UpgradeModal } from "@/components/plan/UpgradeModal"
@@ -23,12 +19,12 @@ type PanelMode =
 export function ContentLibraryPage() {
   const { articles, addArticle } = useArticles()
   const { profile } = useCompanyProfile()
-  const { isGrowthOrAbove, canGenerate } = usePlan()
+  const { canGenerate } = usePlan()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const sitemapLoaded = useRef(false)
 
-  // Load sitemap articles on mount if content sitemap URLs are configured
+  // Load sitemap articles on mount
   useEffect(() => {
     if (sitemapLoaded.current) return
     if (profile.contentPaths.length === 0) return
@@ -59,40 +55,12 @@ export function ContentLibraryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Subtle header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Content Library
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Browse and manage your generated content.
-          </p>
-        </div>
-        {!panel && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setPanel({ type: "csv" })}>
-              <Upload className="h-4 w-4 mr-1" />
-              Upload
-            </Button>
-            {isGrowthOrAbove && (
-              <Button
-                variant="outline"
-                onClick={() => setPanel({ type: "research" })}
-              >
-                <Sparkles className="h-4 w-4 mr-1" />
-                Research Keywords
-                <Badge className="ml-1.5 text-[9px] px-1 py-0 bg-[#0061FF]/10 text-[#0061FF]">
-                  Growth
-                </Badge>
-              </Button>
-            )}
-            <Button onClick={handleCreateArticle}>
-              <Plus className="h-4 w-4 mr-1" />
-              New Article
-            </Button>
-          </div>
-        )}
+        <h1 className="text-lg font-semibold text-foreground">
+          Content Library
+        </h1>
       </div>
 
       {panel?.type === "wizard" && (
@@ -109,17 +77,19 @@ export function ContentLibraryPage() {
         <KeywordResearchPanel onClose={handleClosePanel} />
       )}
 
-      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
 
-      {!panel && articles.length === 0 ? (
-        <EmptyState onCreateArticle={handleCreateArticle} />
-      ) : !panel ? (
+      {!panel && (
         <SpreadsheetTable
           articles={articles}
           onEditArticle={handleEditArticle}
           onOpenUpload={() => setPanel({ type: "csv" })}
+          onNewArticle={handleCreateArticle}
         />
-      ) : null}
+      )}
     </div>
   )
 }
