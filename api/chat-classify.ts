@@ -16,7 +16,8 @@ AVAILABLE TOOLS:
 If the user's message doesn't match any tool, respond with a short helpful message suggesting what you can do. Do NOT call a tool in that case.
 
 IMPORTANT:
-- For article references, extract the article name/title/keyword the user mentions. Strip surrounding quotes.
+- You receive the full conversation history. Use it to resolve references like "it", "that article", "the one I just created", "its keyword", etc.
+- For article references, extract the article name/title/keyword the user mentions. Strip surrounding quotes. If the user refers to an article from a previous message (e.g. "change its keyword"), resolve the reference using conversation history.
 - For field names, normalize to: keyword, title, slug, category, status, metaTitle, metaDescription, ctaText, ctaUrl, authorId, contentPath.
 - For status filters, normalize to: pending, draft, published, generating, error.
 - Be generous in matching — understand synonyms, varied phrasing, typos, and natural language.`
@@ -182,7 +183,7 @@ export default async function handler(
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" })
   }
 
-  const { message, articleTitles } = req.body ?? {}
+  const { message, articleTitles, history } = req.body ?? {}
   if (!message || typeof message !== "string") {
     return res.status(400).json({ error: "Missing message field" })
   }
@@ -195,6 +196,23 @@ export default async function handler(
       ? `\n\nExisting articles in the library: ${articleTitles.slice(0, 50).join(", ")}`
       : ""
 
+  // Build conversation messages from history for context
+  const conversationMessages: Anthropic.MessageParam[] = []
+  if (Array.isArray(history) && history.length > 0) {
+    for (const msg of history) {
+      const role = msg.role === "user" ? "user" : "assistant"
+      // Avoid consecutive same-role messages by merging
+      const last = conversationMessages[conversationMessages.length - 1]
+      if (last && last.role === role) {
+        last.content = (last.content as string) + "\n" + msg.text
+      } else {
+        conversationMessages.push({ role, content: msg.text })
+      }
+    }
+  }
+  // Add the current user message
+  conversationMessages.push({ role: "user", content: message })
+
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -202,7 +220,7 @@ export default async function handler(
       system: SYSTEM_PROMPT + contextNote,
       tools: TOOLS,
       tool_choice: { type: "auto" },
-      messages: [{ role: "user", content: message }],
+      messages: conversationMessages,
     })
 
     // Check if the model called a tool

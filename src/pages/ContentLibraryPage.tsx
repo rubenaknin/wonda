@@ -23,11 +23,16 @@ export function ContentLibraryPage() {
   const { articles, addArticle, getArticleById, updateArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { canGenerate } = usePlan()
-  const { commandBus } = useChat()
+  const { commandBus, setSidebarOpen } = useChat()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [previewArticleId, setPreviewArticleId] = useState<string | null>(null)
   const sitemapLoaded = useRef(false)
+
+  // Close sidebar chat on this page — Content Library needs full width
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [setSidebarOpen])
 
   // Subscribe to chat command bus
   const handleChatCommand = useCallback(

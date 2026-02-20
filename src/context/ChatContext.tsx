@@ -121,6 +121,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Use refs to avoid stale closures in async callbacks
   const pendingRef = useRef(state.pendingConfirmation)
   pendingRef.current = state.pendingConfirmation
+  const messagesRef = useRef(state.messages)
+  messagesRef.current = state.messages
   const articlesRef = useRef(articlesCtx)
   articlesRef.current = articlesCtx
   const profileRef = useRef(profileCtx)
@@ -173,7 +175,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Async AI classification
+      // Async AI classification (pass message history for context)
       processMessage(
         trimmed,
         {
@@ -185,7 +187,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         {
           profile: profileRef.current.profile,
           updateProfile: profileRef.current.updateProfile,
-        }
+        },
+        messagesRef.current
       )
         .then((result) => {
           dispatch({ type: "ADD_MESSAGE", message: result.response })

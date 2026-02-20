@@ -1,5 +1,5 @@
 import type { Article } from "@/types"
-import type { ChatIntent, ChatIntentType } from "./types"
+import type { ChatIntent, ChatIntentType, ChatMessage } from "./types"
 
 // ============================================================
 // AI-powered intent classification via Vercel API route
@@ -13,21 +13,29 @@ interface ClassifyResponse {
 
 /**
  * Classify user message using Claude AI (via /api/chat-classify).
+ * Sends conversation history so the model has full context.
  * Falls back to local regex if the API is unreachable.
  */
 export async function classifyIntent(
   message: string,
-  articles: Article[]
+  articles: Article[],
+  history: ChatMessage[]
 ): Promise<ChatIntent & { fallbackText?: string }> {
   try {
     const articleTitles = articles
       .map((a) => a.title || a.keyword || a.slug)
       .filter(Boolean)
 
+    // Send last 20 messages for context (keeps payload small)
+    const recentHistory = history.slice(-20).map((m) => ({
+      role: m.role,
+      text: m.text,
+    }))
+
     const res = await fetch("/api/chat-classify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, articleTitles }),
+      body: JSON.stringify({ message, articleTitles, history: recentHistory }),
     })
 
     if (!res.ok) throw new Error(`API ${res.status}`)

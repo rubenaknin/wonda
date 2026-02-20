@@ -35,9 +35,10 @@ function createMessageId(): string {
 export async function processMessage(
   userText: string,
   articlesOps: ArticlesOps,
-  profileOps: ProfileOps
+  profileOps: ProfileOps,
+  history: ChatMessage[]
 ): Promise<ProcessResult> {
-  const intentResult = await classifyIntent(userText, articlesOps.articles)
+  const intentResult = await classifyIntent(userText, articlesOps.articles, history)
   const { fallbackText, ...intent } = intentResult
 
   const result = executeAction(intent, articlesOps, profileOps)
