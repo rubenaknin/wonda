@@ -20,12 +20,14 @@ interface WizardState {
   ctaText: string
   ctaUrl: string
   title: string
+  authorId: string
 }
 
 type WizardAction =
   | { type: "SET_KEYWORD"; keyword: string }
   | { type: "SET_SLUG"; slug: string }
   | { type: "SET_CATEGORY"; category: ArticleCategory }
+  | { type: "SET_AUTHOR"; authorId: string }
   | { type: "SET_TITLE"; title: string }
   | { type: "START_GENERATION" }
   | {
@@ -77,6 +79,7 @@ const initialState: WizardState = {
   ctaText: "",
   ctaUrl: "",
   title: "",
+  authorId: "",
 }
 
 function getStepIndex(step: WizardStep): number {
@@ -93,6 +96,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, category: action.category }
     case "SET_TITLE":
       return { ...state, title: action.title }
+    case "SET_AUTHOR":
+      return { ...state, authorId: action.authorId }
     case "START_GENERATION":
       return {
         ...state,

@@ -71,6 +71,7 @@ export function InlineArticleWizard({
             ctaText: article.ctaText,
             ctaUrl: article.ctaUrl,
             title: article.title,
+            authorId: article.authorId || "",
             generationProgress: article.bodyHtml ? 100 : 0,
           },
         })
@@ -115,6 +116,7 @@ export function InlineArticleWizard({
         internalLinks: state.internalLinks,
         selectedQuestions: state.selectedQuestions,
         status: hasBody ? "draft" : "pending",
+        authorId: state.authorId || undefined,
       })
       toast.success("Article updated")
     } else if (hasKeyword) {
@@ -136,6 +138,7 @@ export function InlineArticleWizard({
         selectedQuestions: state.selectedQuestions,
         createdAt: now,
         updatedAt: now,
+        authorId: state.authorId || undefined,
       }
       addArticle(newArticle)
       toast.success(hasBody ? "Article saved to Content Library" : "Keyword saved to Content Library")
@@ -151,6 +154,8 @@ export function InlineArticleWizard({
           <KeywordStep
             keyword={state.keyword}
             onChange={(k) => dispatch({ type: "SET_KEYWORD", keyword: k })}
+            authorId={state.authorId}
+            onAuthorChange={(id) => dispatch({ type: "SET_AUTHOR", authorId: id })}
           />
         )
       case "slug":

@@ -17,6 +17,8 @@ const emptyProfile: CompanyProfile = {
   ctaUrl: "",
   competitors: [],
   intelligenceBank: [],
+  authors: [],
+  authorAssignmentRules: "",
   gscConnected: false,
   gscPropertyUrl: "",
 }

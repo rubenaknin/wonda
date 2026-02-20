@@ -36,6 +36,9 @@ export interface CompanyProfile {
   competitors: Competitor[]
   // Step 4 - Intelligence Bank
   intelligenceBank: IntelligenceBankQuestion[]
+  // Authors
+  authors: Author[]
+  authorAssignmentRules: string
   // Integrations
   gscConnected: boolean
   gscPropertyUrl: string
@@ -52,6 +55,14 @@ export interface IntelligenceBankQuestion {
   text: string
   enabled: boolean
 }
+
+export interface Author {
+  id: string
+  name: string
+  role?: string
+  bio?: string
+}
+
 
 // ============================================================
 // Pricing
@@ -122,6 +133,7 @@ export interface Article {
   updatedAt: string
   source?: "new" | "sitemap"
   contentPath?: string
+  authorId?: string
 }
 
 // ============================================================

@@ -1,6 +1,7 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Check, Lock, Globe, Unplug, Loader2 } from "lucide-react"
+import { Check, Lock, Globe, Unplug, Loader2, Building2, ArrowRight } from "lucide-react"
 import {
   Card,
   CardHeader,
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
 import { useAuth } from "@/context/AuthContext"
-import { PLAN_DETAILS, STORAGE_KEYS } from "@/lib/constants"
+import { PLAN_DETAILS, STORAGE_KEYS, ROUTES } from "@/lib/constants"
 import { createCheckoutSession } from "@/lib/stripe-client"
 import type { PricingTier, CmsType, CmsIntegration, GscData } from "@/types"
 
@@ -63,7 +64,8 @@ const DEFAULT_GSC_DATA: GscData = {
 }
 
 export function SettingsPage() {
-  const { profile, updateProfile } = useCompanyProfile()
+  const navigate = useNavigate()
+  const { profile, updateProfile, profileCompletion } = useCompanyProfile()
   const { plan, selectPlan, isTrialActive, trialDaysRemaining } = usePlan()
   const { user } = useAuth()
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
@@ -164,6 +166,29 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Company Profile */}
+      <Card
+        className="wonda-card cursor-pointer hover:border-[#0061FF]/30 transition-colors"
+        onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
+      >
+        <CardContent className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-[#0061FF]/5">
+              <Building2 className="h-4 w-4 text-[#0061FF]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Company Profile</p>
+              <p className="text-xs text-muted-foreground">
+                {profileCompletion === 100
+                  ? "Your company profile is complete"
+                  : `${profileCompletion}% complete`}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+      </Card>
 
       {/* Plan Card */}
       <Card className="wonda-card">

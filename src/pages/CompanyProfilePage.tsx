@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Sparkles, Loader2 } from "lucide-react"
 import {
@@ -14,12 +15,15 @@ import { BrandDnaStep } from "@/components/company-profile/BrandDnaStep"
 import { GoalStep } from "@/components/company-profile/GoalStep"
 import { CompetitorsStep } from "@/components/company-profile/CompetitorsStep"
 import { IntelligenceBankStep } from "@/components/company-profile/IntelligenceBankStep"
+import { AuthorsStep } from "@/components/company-profile/AuthorsStep"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { aiFillAll } from "@/lib/ai-fill"
+import { ROUTES } from "@/lib/constants"
 
-const STEPS = ["Brand DNA", "The Goal", "Competitors", "Intelligence Bank"]
+const STEPS = ["Brand DNA", "The Goal", "Competitors", "Intelligence Bank", "Authors"]
 
 export function CompanyProfilePage() {
+  const navigate = useNavigate()
   const { profile, updateProfile } = useCompanyProfile()
   const [currentStep, setCurrentStep] = useState(0)
   const [aiLoading, setAiLoading] = useState(false)
@@ -42,7 +46,9 @@ export function CompanyProfilePage() {
       case 2:
         return true // competitors are optional
       case 3:
-        return profile.intelligenceBank.some((q) => q.enabled)
+        return profile.intelligenceBank.length > 0
+      case 4:
+        return true // authors are optional
       default:
         return false
     }
@@ -61,7 +67,10 @@ export function CompanyProfilePage() {
   }
 
   const handleSave = () => {
-    toast.success("Company profile saved")
+    toast.success("Company profile saved! You can access it anytime from Settings.", {
+      duration: 5000,
+    })
+    navigate(ROUTES.DASHBOARD)
   }
 
   return (
@@ -104,6 +113,8 @@ export function CompanyProfilePage() {
               "Add competitors for comparison content."}
             {currentStep === 3 &&
               "Review and curate your intelligence questions."}
+            {currentStep === 4 &&
+              "Add authors and set topic-based assignment rules."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -118,6 +129,9 @@ export function CompanyProfilePage() {
           )}
           {currentStep === 3 && (
             <IntelligenceBankStep profile={profile} onUpdate={updateProfile} />
+          )}
+          {currentStep === 4 && (
+            <AuthorsStep profile={profile} onUpdate={updateProfile} />
           )}
 
           <div className="flex justify-between pt-4 border-t border-border">
