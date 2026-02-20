@@ -71,23 +71,23 @@ export function AppSidebar() {
 
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={location.pathname === ROUTES.COMPANY_PROFILE}
-                  onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
-                  tooltip="Intelligence"
-                >
-                  <Brain className="h-4 w-4" />
-                  <span className="flex-1">Intelligence</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
                   isActive={location.pathname === ROUTES.CONTENT_LIBRARY}
                   onClick={() => navigate(ROUTES.CONTENT_LIBRARY)}
                   tooltip="Content Library"
                 >
                   <Library className="h-4 w-4" />
                   <span className="flex-1">Content Library</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={location.pathname === ROUTES.COMPANY_PROFILE}
+                  onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
+                  tooltip="Intelligence"
+                >
+                  <Brain className="h-4 w-4" />
+                  <span className="flex-1">Intelligence</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

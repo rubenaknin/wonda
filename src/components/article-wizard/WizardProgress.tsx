@@ -13,14 +13,16 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 interface WizardProgressProps {
   currentStep: WizardStep
+  visibleSteps?: WizardStep[]
 }
 
-export function WizardProgress({ currentStep }: WizardProgressProps) {
-  const currentIndex = WIZARD_STEPS.indexOf(currentStep)
+export function WizardProgress({ currentStep, visibleSteps }: WizardProgressProps) {
+  const steps = visibleSteps || WIZARD_STEPS
+  const currentIndex = steps.indexOf(currentStep)
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-2">
-      {WIZARD_STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const isCompleted = i < currentIndex
         const isCurrent = i === currentIndex
 

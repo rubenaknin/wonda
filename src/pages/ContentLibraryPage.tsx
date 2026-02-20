@@ -11,13 +11,13 @@ import { parseSitemapUrls } from "@/lib/sitemap"
 import type { WizardStep } from "@/types"
 
 type PanelMode =
-  | { type: "wizard"; articleId?: string; startStep?: WizardStep }
+  | { type: "wizard"; articleId?: string; startStep?: WizardStep; skipPreSteps?: boolean }
   | { type: "csv" }
   | { type: "research" }
   | null
 
 export function ContentLibraryPage() {
-  const { articles, addArticle } = useArticles()
+  const { articles, addArticle, getArticleById, updateArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { canGenerate } = usePlan()
   const [panel, setPanel] = useState<PanelMode>(null)
@@ -38,16 +38,41 @@ export function ContentLibraryPage() {
     }
   }, [profile.contentPaths, articles, addArticle])
 
-  const handleCreateArticle = () => {
+  const handleEditArticle = (articleId: string, startStep?: WizardStep) => {
+    setPanel({ type: "wizard", articleId, startStep })
+  }
+
+  const handleGenerateArticle = (articleId: string) => {
     if (!canGenerate) {
       setShowUpgradeModal(true)
       return
     }
-    setPanel({ type: "wizard" })
-  }
 
-  const handleEditArticle = (articleId: string, startStep?: WizardStep) => {
-    setPanel({ type: "wizard", articleId, startStep })
+    // Auto-fill slug and category if empty before opening wizard
+    const article = getArticleById(articleId)
+    if (article) {
+      const updates: Record<string, string> = {}
+      if (!article.slug && article.keyword) {
+        updates.slug = article.keyword
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+      }
+      if (!article.title && article.keyword) {
+        updates.title = article.keyword
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ")
+      }
+      if (!article.category) {
+        updates.category = "blog"
+      }
+      if (Object.keys(updates).length > 0) {
+        updateArticle(articleId, updates)
+      }
+    }
+
+    setPanel({ type: "wizard", articleId, startStep: "generate", skipPreSteps: true })
   }
 
   const handleClosePanel = () => {
@@ -67,6 +92,7 @@ export function ContentLibraryPage() {
         <InlineArticleWizard
           editArticleId={panel.articleId}
           startStep={panel.startStep}
+          skipPreSteps={panel.skipPreSteps}
           onClose={handleClosePanel}
         />
       )}
@@ -87,7 +113,7 @@ export function ContentLibraryPage() {
           articles={articles}
           onEditArticle={handleEditArticle}
           onOpenUpload={() => setPanel({ type: "csv" })}
-          onNewArticle={handleCreateArticle}
+          onGenerateArticle={handleGenerateArticle}
         />
       )}
     </div>

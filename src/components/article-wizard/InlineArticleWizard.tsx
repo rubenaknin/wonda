@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,7 @@ import { GenerateStep } from "./GenerateStep"
 import { EditorStep } from "./EditorStep"
 import { MetadataStep } from "./MetadataStep"
 import { ExportStep } from "./ExportStep"
-import type { Article, ArticleCategory, WizardStep, FaqItem } from "@/types"
+import type { Article, ArticleCategory, WizardStep as WizardStepType, FaqItem } from "@/types"
 
 function faqItemsToHtml(items: FaqItem[]): string {
   if (items.length === 0) return ""
@@ -27,7 +27,7 @@ function faqItemsToHtml(items: FaqItem[]): string {
   return `<h2>Frequently Asked Questions</h2>\n${inner}`
 }
 
-function getResumeStep(article: Article): WizardStep {
+function getResumeStep(article: Article): WizardStepType {
   if (!article.slug) return "slug"
   if (!article.category) return "category"
   if (!article.bodyHtml) return "generate"
@@ -36,18 +36,32 @@ function getResumeStep(article: Article): WizardStep {
 
 interface InlineArticleWizardProps {
   editArticleId?: string
-  startStep?: WizardStep
+  startStep?: WizardStepType
+  skipPreSteps?: boolean
   onClose: () => void
 }
 
 export function InlineArticleWizard({
   editArticleId,
   startStep,
+  skipPreSteps,
   onClose,
 }: InlineArticleWizardProps) {
-  const { state, dispatch, canProceed, stepIndex } = useArticleWizard()
+  const { state, dispatch, canProceed } = useArticleWizard()
   const { addArticle, updateArticle, getArticleById } = useArticles()
   const { profile } = useCompanyProfile()
+
+  // Steps to show based on skipPreSteps
+  const visibleSteps = useMemo<WizardStepType[]>(() => {
+    if (skipPreSteps) {
+      return ["generate", "editor", "metadata", "export"]
+    }
+    return ["keyword", "slug", "category", "generate", "editor", "metadata", "export"]
+  }, [skipPreSteps])
+
+  const visibleStepIndex = visibleSteps.indexOf(state.currentStep)
+  const isFirstVisibleStep = visibleStepIndex === 0
+  const isLastVisibleStep = visibleStepIndex === visibleSteps.length - 1
 
   useEffect(() => {
     if (editArticleId) {
@@ -148,6 +162,20 @@ export function InlineArticleWizard({
     }
 
     onClose()
+  }
+
+  const handlePrevStep = () => {
+    const currentVisibleIdx = visibleSteps.indexOf(state.currentStep)
+    if (currentVisibleIdx > 0) {
+      dispatch({ type: "GO_TO_STEP", step: visibleSteps[currentVisibleIdx - 1] })
+    }
+  }
+
+  const handleNextStep = () => {
+    const currentVisibleIdx = visibleSteps.indexOf(state.currentStep)
+    if (currentVisibleIdx < visibleSteps.length - 1) {
+      dispatch({ type: "GO_TO_STEP", step: visibleSteps[currentVisibleIdx + 1] })
+    }
   }
 
   const renderStep = () => {
@@ -265,9 +293,17 @@ export function InlineArticleWizard({
   return (
     <Card className="wonda-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle>
-          {editArticleId ? "Edit Article" : "New Article"}
-        </CardTitle>
+        <div>
+          <CardTitle>
+            {editArticleId ? "Edit Article" : "New Article"}
+          </CardTitle>
+          {skipPreSteps && state.keyword && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {state.keyword}
+              {state.title && state.title !== state.keyword && ` — ${state.title}`}
+            </p>
+          )}
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -278,15 +314,15 @@ export function InlineArticleWizard({
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
-        <WizardProgress currentStep={state.currentStep} />
+        <WizardProgress currentStep={state.currentStep} visibleSteps={visibleSteps} />
 
         <div>{renderStep()}</div>
 
         <div className="flex justify-between pt-4 border-t border-border">
           <Button
             variant="ghost"
-            onClick={() => dispatch({ type: "PREV_STEP" })}
-            disabled={stepIndex === 0}
+            onClick={handlePrevStep}
+            disabled={isFirstVisibleStep}
           >
             Back
           </Button>
@@ -294,9 +330,9 @@ export function InlineArticleWizard({
             <Button variant="outline" onClick={handleSaveAndClose}>
               Save & Close
             </Button>
-            {state.currentStep !== "export" && (
+            {!isLastVisibleStep && (
               <Button
-                onClick={() => dispatch({ type: "NEXT_STEP" })}
+                onClick={handleNextStep}
                 disabled={!canProceed()}
               >
                 Next

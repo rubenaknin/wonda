@@ -19,7 +19,6 @@ import {
   Upload,
   Play,
   Trash2,
-  MoreHorizontal,
   Pencil,
   RefreshCw,
   Send,
@@ -28,6 +27,8 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -66,7 +67,7 @@ interface SpreadsheetTableProps {
   articles: Article[]
   onEditArticle: (articleId: string, startStep?: WizardStep) => void
   onOpenUpload: () => void
-  onNewArticle: () => void
+  onGenerateArticle: (articleId: string) => void
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -82,7 +83,7 @@ const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
 const SEEDED_KEY = "wonda_articles_seeded"
 const TABLE_VERSION_KEY = "wonda_table_version"
-const CURRENT_TABLE_VERSION = "2" // bump to force reset of stale localStorage views
+const CURRENT_TABLE_VERSION = "3" // bump to force reset of stale localStorage views
 
 // Column id → friendly label
 const COLUMN_LABELS: Record<string, string> = {
@@ -169,11 +170,26 @@ function getNextAction(
   return { label: "Refresh", icon: RefreshCw, step: "editor" }
 }
 
-function getResumeStep(article: Article): WizardStep {
-  if (!article.slug) return "slug"
-  if (!article.category) return "category"
-  if (!article.bodyHtml) return "generate"
-  return "editor"
+// Mock keyword/title generators
+const MOCK_GENERATED_KEYWORDS = [
+  "best practices for content marketing",
+  "how to improve SEO rankings",
+  "SaaS growth strategies 2025",
+  "customer onboarding best practices",
+  "B2B lead generation techniques",
+]
+
+function generateMockKeyword(): string {
+  return MOCK_GENERATED_KEYWORDS[
+    Math.floor(Math.random() * MOCK_GENERATED_KEYWORDS.length)
+  ]
+}
+
+function generateMockTitle(keyword: string): string {
+  return keyword
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ")
 }
 
 // ── Seed mock articles ─────────────────────────────────────────
@@ -223,6 +239,98 @@ function generateSeedArticles(): Article[] {
       updatedAt: created.toISOString(),
     }
   })
+}
+
+// ── Inline editable cell ──────────────────────────────────────
+function InlineEditCell({
+  articleId,
+  value,
+  field,
+  placeholder,
+  isNew,
+  onUpdate,
+  onGenerate,
+  autoFocus,
+}: {
+  articleId: string
+  value: string
+  field: "keyword" | "title"
+  placeholder: string
+  isNew: boolean
+  onUpdate: (articleId: string, field: string, value: string) => void
+  onGenerate?: () => void
+  autoFocus?: boolean
+}) {
+  const [editing, setEditing] = useState(isNew && !value)
+  const [localValue, setLocalValue] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setLocalValue(value)
+  }, [value])
+
+  useEffect(() => {
+    if (editing && autoFocus && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [editing, autoFocus])
+
+  const commit = () => {
+    if (localValue !== value) {
+      onUpdate(articleId, field, localValue)
+    }
+    setEditing(false)
+  }
+
+  if (!editing && !isNew) {
+    return (
+      <span
+        className={`${field === "keyword" ? "font-medium" : "text-sm"} cursor-text`}
+        onClick={(e) => {
+          e.stopPropagation()
+          setEditing(true)
+        }}
+      >
+        {value || <span className="text-muted-foreground italic">{placeholder}</span>}
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Input
+        ref={inputRef}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit()
+          if (e.key === "Escape") {
+            setLocalValue(value)
+            setEditing(false)
+          }
+        }}
+        placeholder={placeholder}
+        className="h-7 text-sm px-2 py-0"
+        autoFocus={autoFocus}
+      />
+      {onGenerate && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-[#0061FF]"
+          title={`Generate ${field}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onGenerate()
+          }}
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  )
 }
 
 // ── Column Manager Panel (stays open, eye icons, drag-and-drop) ─
@@ -319,10 +427,13 @@ export function SpreadsheetTable({
   articles,
   onEditArticle,
   onOpenUpload,
-  onNewArticle,
+  onGenerateArticle,
 }: SpreadsheetTableProps) {
-  const { addArticle, deleteArticle } = useArticles()
+  const { addArticle, updateArticle, deleteArticle } = useArticles()
   const { webhookUrls } = useWebhook()
+
+  // Track which article IDs are "new" inline rows
+  const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
 
   // Seed default articles on first ever load
   useEffect(() => {
@@ -411,6 +522,36 @@ export function SpreadsheetTable({
     )
   }, [articles, filterGroup])
 
+  // ── Inline cell update handler ─────────────
+  const handleInlineCellUpdate = useCallback(
+    (articleId: string, field: string, value: string) => {
+      updateArticle(articleId, { [field]: value, updatedAt: new Date().toISOString() })
+    },
+    [updateArticle]
+  )
+
+  const handleGenerateKeyword = useCallback(
+    (articleId: string) => {
+      const keyword = generateMockKeyword()
+      updateArticle(articleId, {
+        keyword,
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    [updateArticle]
+  )
+
+  const handleGenerateTitle = useCallback(
+    (articleId: string, keyword: string) => {
+      const title = generateMockTitle(keyword || "untitled article")
+      updateArticle(articleId, {
+        title,
+        updatedAt: new Date().toISOString(),
+      })
+    },
+    [updateArticle]
+  )
+
   // ── Column definitions (ordered) ───────────
   const columnDefs = useMemo<Record<string, ColumnDef<Article>>>(
     () => ({
@@ -421,9 +562,12 @@ export function SpreadsheetTable({
         cell: ({ row }) => {
           const article = row.original
           const { label, icon: Icon } = getNextAction(article)
+          const hasKeyword = Boolean(article.keyword?.trim())
           const colorClass =
             label === "Generate"
-              ? "text-[#0061FF] hover:text-[#0061FF]/80"
+              ? hasKeyword
+                ? "text-[#0061FF] hover:text-[#0061FF]/80"
+                : "text-muted-foreground cursor-not-allowed"
               : label === "Publish"
                 ? "text-[#10B981] hover:text-[#10B981]/80"
                 : "text-[#F59E0B] hover:text-[#F59E0B]/80"
@@ -434,10 +578,18 @@ export function SpreadsheetTable({
                 variant="ghost"
                 size="sm"
                 className={`h-7 text-xs gap-1.5 ${colorClass}`}
+                disabled={label === "Generate" && !hasKeyword}
+                title={label === "Generate" && !hasKeyword ? "Enter a keyword first" : undefined}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (label === "Generate") {
-                    onEditArticle(article.id, getResumeStep(article))
+                    // Remove from new rows tracking
+                    setNewRowIds((prev) => {
+                      const next = new Set(prev)
+                      next.delete(article.id)
+                      return next
+                    })
+                    onGenerateArticle(article.id)
                   } else if (label === "Publish") {
                     onEditArticle(article.id, "export")
                   } else {
@@ -470,20 +622,43 @@ export function SpreadsheetTable({
       keyword: {
         accessorKey: "keyword",
         header: "Keyword",
-        size: 220,
-        cell: ({ getValue }) => (
-          <span className="font-medium">{getValue<string>()}</span>
-        ),
+        size: 240,
+        cell: ({ row }) => {
+          const article = row.original
+          const isNew = newRowIds.has(article.id)
+          return (
+            <InlineEditCell
+              articleId={article.id}
+              value={article.keyword}
+              field="keyword"
+              placeholder="Enter keyword..."
+              isNew={isNew}
+              onUpdate={handleInlineCellUpdate}
+              onGenerate={() => handleGenerateKeyword(article.id)}
+              autoFocus={isNew}
+            />
+          )
+        },
       },
       title: {
         accessorKey: "title",
         header: "Title",
-        size: 250,
-        cell: ({ getValue, row }) => (
-          <span className="text-sm">
-            {getValue<string>() || row.original.keyword}
-          </span>
-        ),
+        size: 280,
+        cell: ({ row }) => {
+          const article = row.original
+          const isNew = newRowIds.has(article.id)
+          return (
+            <InlineEditCell
+              articleId={article.id}
+              value={article.title}
+              field="title"
+              placeholder="Enter title..."
+              isNew={isNew}
+              onUpdate={handleInlineCellUpdate}
+              onGenerate={() => handleGenerateTitle(article.id, article.keyword)}
+            />
+          )
+        },
       },
       slug: {
         accessorKey: "slug",
@@ -559,10 +734,10 @@ export function SpreadsheetTable({
         ),
       },
     }),
-    [onEditArticle]
+    [onEditArticle, onGenerateArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle]
   )
 
-  // Build ordered columns array: select + rowNumber + ordered data cols + more menu
+  // Build ordered columns array: select + rowNumber + ordered data cols + actions col
   const columns = useMemo<ColumnDef<Article>[]>(() => {
     const fixed: ColumnDef<Article>[] = [
       {
@@ -600,18 +775,18 @@ export function SpreadsheetTable({
       .filter((id) => columnDefs[id])
       .map((id) => columnDefs[id])
 
-    const moreCol: ColumnDef<Article> = {
-      id: "more",
+    const actionsCol: ColumnDef<Article> = {
+      id: "actions",
       header: "",
       size: 40,
       cell: ({ row }) => {
         const article = row.original
         return (
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                  <MoreHorizontal className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -639,6 +814,11 @@ export function SpreadsheetTable({
                   className="text-destructive"
                   onClick={() => {
                     deleteArticle(article.id)
+                    setNewRowIds((prev) => {
+                      const next = new Set(prev)
+                      next.delete(article.id)
+                      return next
+                    })
                     toast.success("Article deleted")
                   }}
                 >
@@ -654,7 +834,7 @@ export function SpreadsheetTable({
       enableHiding: false,
     }
 
-    return [...fixed, ...ordered, moreCol]
+    return [...fixed, ...ordered, actionsCol]
   }, [columnOrder, columnDefs, onEditArticle, deleteArticle, webhookUrls])
 
   const table = useReactTable({
@@ -733,38 +913,31 @@ export function SpreadsheetTable({
     [views, activeViewId, handleSwitchView]
   )
 
-  const handleAddRow = useCallback(() => {
-    onNewArticle()
-  }, [onNewArticle])
-
-  const handleAddRows = useCallback(
-    (count: number) => {
-      const now = new Date().toISOString()
-      for (let i = 0; i < count; i++) {
-        addArticle({
-          id: crypto.randomUUID(),
-          title: "",
-          keyword: "",
-          slug: "",
-          category: "blog",
-          status: "pending",
-          bodyHtml: "",
-          faqHtml: "",
-          faqItems: [],
-          metaTitle: "",
-          metaDescription: "",
-          ctaText: "",
-          ctaUrl: "",
-          internalLinks: [],
-          selectedQuestions: [],
-          createdAt: now,
-          updatedAt: now,
-        })
-      }
-      toast.success(`Added ${count} empty rows`)
-    },
-    [addArticle]
-  )
+  // ── New Article: adds inline row ────────────
+  const handleAddInlineRow = useCallback(() => {
+    const now = new Date().toISOString()
+    const id = crypto.randomUUID()
+    addArticle({
+      id,
+      title: "",
+      keyword: "",
+      slug: "",
+      category: "blog",
+      status: "pending",
+      bodyHtml: "",
+      faqHtml: "",
+      faqItems: [],
+      metaTitle: "",
+      metaDescription: "",
+      ctaText: "",
+      ctaUrl: "",
+      internalLinks: [],
+      selectedQuestions: [],
+      createdAt: now,
+      updatedAt: now,
+    })
+    setNewRowIds((prev) => new Set(prev).add(id))
+  }, [addArticle])
 
   const handleExportCsv = useCallback(() => {
     const exportCols = columnOrder.filter(
@@ -927,7 +1100,7 @@ export function SpreadsheetTable({
           Import
         </Button>
 
-        <Button size="sm" className="h-8 text-xs gap-1" onClick={onNewArticle}>
+        <Button size="sm" className="h-8 text-xs gap-1" onClick={handleAddInlineRow}>
           <Plus className="h-3 w-3" />
           New Article
         </Button>
@@ -974,7 +1147,7 @@ export function SpreadsheetTable({
                   <th
                     key={header.id}
                     className={`text-left text-xs font-medium text-muted-foreground px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
-                      header.id === "more" ? "sticky right-0 bg-[#FAFBFC] z-20" : ""
+                      header.id === "actions" ? "sticky right-0 bg-[#FAFBFC] z-20" : ""
                     }`}
                     style={{ width: header.getSize() }}
                   >
@@ -1019,14 +1192,20 @@ export function SpreadsheetTable({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="group/row border-b border-border hover:bg-[#F8FAFC] cursor-pointer transition-colors"
-                  onClick={() => onEditArticle(row.original.id)}
+                  className={`group/row border-b border-border hover:bg-[#F8FAFC] cursor-pointer transition-colors ${
+                    newRowIds.has(row.original.id) ? "bg-[#0061FF]/[0.02]" : ""
+                  }`}
+                  onClick={() => {
+                    if (!newRowIds.has(row.original.id)) {
+                      onEditArticle(row.original.id)
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
                       className={`px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
-                        cell.column.id === "more" ? "sticky right-0 bg-white group-hover/row:bg-[#F8FAFC]" : ""
+                        cell.column.id === "actions" ? "sticky right-0 bg-white group-hover/row:bg-[#F8FAFC]" : ""
                       }`}
                       style={{ maxWidth: cell.column.getSize() }}
                     >
@@ -1044,27 +1223,7 @@ export function SpreadsheetTable({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-3 py-2 border border-t-0 border-border bg-[#FAFBFC] rounded-b-lg">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            onClick={handleAddRow}
-          >
-            <Plus className="h-3 w-3" />
-            Add Row
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            onClick={() => handleAddRows(10)}
-          >
-            <Plus className="h-3 w-3" />
-            Add 10 Rows
-          </Button>
-        </div>
+      <div className="flex items-center justify-end px-3 py-2 border border-t-0 border-border bg-[#FAFBFC] rounded-b-lg">
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span>
             {rowCount} Row{rowCount !== 1 ? "s" : ""}
