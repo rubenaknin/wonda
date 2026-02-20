@@ -1,6 +1,7 @@
-import { createContext, useContext, useCallback, useMemo, type ReactNode } from "react"
+import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from "react"
 import { useLocalStorage } from "@/hooks/useLocalStorage"
 import { STORAGE_KEYS } from "@/lib/constants"
+import { readCompanyProfile, writeCompanyProfile } from "@/lib/firestore"
 import type { CompanyProfile } from "@/types"
 
 const emptyProfile: CompanyProfile = {
@@ -11,6 +12,7 @@ const emptyProfile: CompanyProfile = {
   sitemapUrl: "",
   contentSitemapUrls: [],
   contentPaths: [],
+  reviewPlatforms: [],
   ctaText: "",
   ctaUrl: "",
   competitors: [],
@@ -42,23 +44,60 @@ interface CompanyProfileContextValue {
   updateProfile: (partial: Partial<CompanyProfile>) => void
   isOnboarded: boolean
   profileCompletion: number
+  loading: boolean
 }
 
-const CompanyProfileContext = createContext<CompanyProfileContextValue | null>(
-  null
-)
+const CompanyProfileContext = createContext<CompanyProfileContextValue | null>(null)
 
-export function CompanyProfileProvider({ children }: { children: ReactNode }) {
+export function CompanyProfileProvider({ children, uid }: { children: ReactNode; uid?: string }) {
   const [profile, setProfile] = useLocalStorage<CompanyProfile>(
     STORAGE_KEYS.COMPANY_PROFILE,
     emptyProfile
   )
+  const [loading, setLoading] = useState(false)
+  const [firestoreLoaded, setFirestoreLoaded] = useState(false)
+
+  // Load from Firestore on mount if uid exists
+  useEffect(() => {
+    if (!uid || firestoreLoaded) return
+    setLoading(true)
+    readCompanyProfile(uid)
+      .then((data) => {
+        if (data) {
+          setProfile({ ...emptyProfile, ...data })
+        }
+      })
+      .catch(() => {
+        // Fallback to localStorage (already loaded)
+      })
+      .finally(() => {
+        setLoading(false)
+        setFirestoreLoaded(true)
+      })
+  }, [uid, firestoreLoaded, setProfile])
 
   const updateProfile = useCallback(
     (partial: Partial<CompanyProfile>) => {
-      setProfile((prev) => ({ ...prev, ...partial }))
+      setProfile((prev) => {
+        const updated = { ...prev, ...partial }
+        // Async write to Firestore (fire and forget)
+        if (uid) {
+          writeCompanyProfile(uid, updated).catch(() => {})
+        }
+        return updated
+      })
     },
-    [setProfile]
+    [setProfile, uid]
+  )
+
+  const setProfileWithSync = useCallback(
+    (newProfile: CompanyProfile) => {
+      setProfile(newProfile)
+      if (uid) {
+        writeCompanyProfile(uid, newProfile).catch(() => {})
+      }
+    },
+    [setProfile, uid]
   )
 
   const isOnboarded = Boolean(profile.name && profile.valueProp)
@@ -66,7 +105,7 @@ export function CompanyProfileProvider({ children }: { children: ReactNode }) {
 
   return (
     <CompanyProfileContext.Provider
-      value={{ profile, setProfile, updateProfile, isOnboarded, profileCompletion }}
+      value={{ profile, setProfile: setProfileWithSync, updateProfile, isOnboarded, profileCompletion, loading }}
     >
       {children}
     </CompanyProfileContext.Provider>
@@ -76,9 +115,7 @@ export function CompanyProfileProvider({ children }: { children: ReactNode }) {
 export function useCompanyProfile() {
   const context = useContext(CompanyProfileContext)
   if (!context) {
-    throw new Error(
-      "useCompanyProfile must be used within a CompanyProfileProvider"
-    )
+    throw new Error("useCompanyProfile must be used within a CompanyProfileProvider")
   }
   return context
 }

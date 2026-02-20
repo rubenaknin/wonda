@@ -58,7 +58,7 @@ export function GenerateStep({
   const navigate = useNavigate()
   const { webhookUrls } = useWebhook()
   const { profile, profileCompletion } = useCompanyProfile()
-  const { canGenerate, articlesRemaining, incrementUsage } = usePlan()
+  const { canGenerate, incrementUsage } = usePlan()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const generateMockContent = useCallback(() => {
@@ -206,18 +206,17 @@ export function GenerateStep({
       )}
 
       {!canGenerate && !profileIncomplete && (
-        <div className="rounded-lg p-4 border border-red-500/20 bg-red-50 space-y-2">
-          <div className="flex items-center gap-2 text-red-500 font-medium text-sm">
+        <div className="rounded-lg p-4 border border-[#0061FF]/20 bg-[#0061FF]/5 space-y-2">
+          <div className="flex items-center gap-2 text-[#0061FF] font-medium text-sm">
             <AlertTriangle className="h-4 w-4" />
-            Plan Limit Reached
+            Upgrade Required
           </div>
-          <p className="text-xs text-red-500/70">
-            You've used all {articlesRemaining === 0 ? "your" : ""} articles for this billing cycle. Upgrade your plan to continue generating.
+          <p className="text-xs text-[#0061FF]/70">
+            You've reached your article limit or your trial has expired. Upgrade your plan to continue generating content.
           </p>
           <Button
             size="sm"
-            variant="outline"
-            className="border-red-500/30 text-red-500 hover:bg-red-50"
+            className="bg-[#0061FF] hover:bg-[#0061FF]/90"
             onClick={() => navigate(ROUTES.SETTINGS)}
           >
             Upgrade Plan

@@ -19,6 +19,25 @@ export function aiFillField(
   return MOCK_VALUES[fieldName] ?? ""
 }
 
+export function aiFillFromDomain(domain: string): Partial<CompanyProfile> {
+  // Extract company name from domain (e.g., "acme.com" → "Acme")
+  const namePart = domain.split(".")[0] ?? "Company"
+  const name = namePart.charAt(0).toUpperCase() + namePart.slice(1)
+  const website = `https://${domain}`
+
+  return {
+    name,
+    description: `${name} provides innovative solutions that help businesses grow and succeed in their market. Our platform combines cutting-edge technology with intuitive design.`,
+    valueProp: `${name} is the only platform that combines AI-powered automation with real-time analytics, helping teams achieve 3x better results.`,
+    websiteUrl: website,
+    sitemapUrl: `${website}/sitemap.xml`,
+    contentSitemapUrls: [`${website}/blog-sitemap.xml`],
+    contentPaths: ["/blog"],
+    ctaText: "Start Free Trial",
+    ctaUrl: `${website}/trial`,
+  }
+}
+
 export function aiFillAll(
   profile: CompanyProfile
 ): Partial<CompanyProfile> {

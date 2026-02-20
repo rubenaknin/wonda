@@ -14,7 +14,23 @@ export const ROUTES = {
   COMPANY_PROFILE: "/company-profile",
   CONTENT_LIBRARY: "/content-library",
   SETTINGS: "/settings",
+  ADMIN: "/admin",
+  LOGIN: "/login",
+  VERIFY_EMAIL: "/verify-email",
+  ONBOARDING: "/onboarding",
 } as const
+
+export const REVIEW_PLATFORMS = [
+  "Apple App Store",
+  "Google Play Store",
+  "G2",
+  "Gartner",
+  "Trustpilot",
+  "Capterra",
+  "TripAdvisor",
+  "Yelp",
+  "Amazon",
+] as const
 
 export const ARTICLE_CATEGORIES: { value: ArticleCategory; label: string }[] = [
   { value: "blog", label: "Blog Post" },

@@ -1,4 +1,5 @@
-import { Plus, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { Plus, Trash2, Loader2, Sparkles } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Accordion,
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { RichTextEditor } from "./RichTextEditor"
+import { applyAiEdit } from "@/lib/ai-edit"
 import type { FaqItem } from "@/types"
 
 interface EditorStepProps {
@@ -31,6 +33,21 @@ export function EditorStep({
   onAddFaqItem,
   onRemoveFaqItem,
 }: EditorStepProps) {
+  const [aiInstructions, setAiInstructions] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const handleAiEdit = async () => {
+    if (!aiInstructions.trim() || aiLoading) return
+    setAiLoading(true)
+    try {
+      const result = await applyAiEdit(aiInstructions, bodyHtml)
+      onUpdateBody(result)
+      setAiInstructions("")
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -38,6 +55,34 @@ export function EditorStep({
         <p className="text-sm text-muted-foreground">
           Review and edit the generated article content and FAQ section.
         </p>
+      </div>
+
+      {/* AI Edit Section */}
+      <div className="rounded-lg border border-border p-4 space-y-3 bg-[#F8FAFC]">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-[#0061FF]" />
+          Edit with AI
+        </div>
+        <Textarea
+          value={aiInstructions}
+          onChange={(e) => setAiInstructions(e.target.value)}
+          placeholder="Describe how you'd like to modify the article... e.g., 'Make the tone more casual' or 'Add a section about pricing'"
+          rows={2}
+        />
+        <Button
+          size="sm"
+          onClick={handleAiEdit}
+          disabled={!aiInstructions.trim() || aiLoading}
+        >
+          {aiLoading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              Applying...
+            </>
+          ) : (
+            "Apply"
+          )}
+        </Button>
       </div>
 
       <Tabs defaultValue="body" className="w-full">

@@ -1,6 +1,7 @@
-import { useEffect } from "react"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react"
+import { Plus, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { generateQuestions } from "@/lib/questions"
 import type { CompanyProfile } from "@/types"
@@ -14,41 +15,53 @@ export function IntelligenceBankStep({
   profile,
   onUpdate,
 }: IntelligenceBankStepProps) {
+  const [newQuestion, setNewQuestion] = useState("")
+
   useEffect(() => {
     const generated = generateQuestions(profile)
-    // Preserve existing enabled state for questions that match by id
-    const existingMap = new Map(
-      profile.intelligenceBank.map((q) => [q.id, q.enabled])
+    // Keep existing questions that were manually added, merge with generated
+    const existingIds = new Set(profile.intelligenceBank.map((q) => q.id))
+    const manualQuestions = profile.intelligenceBank.filter(
+      (q) => q.id.startsWith("manual-")
     )
-    const merged = generated.map((q) => ({
-      ...q,
-      enabled: existingMap.has(q.id) ? existingMap.get(q.id)! : q.enabled,
-    }))
+    const merged = [
+      ...generated.filter((q) => !existingIds.has(q.id) || !q.id.startsWith("manual-")),
+      ...manualQuestions,
+    ]
     onUpdate({ intelligenceBank: merged })
-    // Only regenerate when entering this step (when name/competitors change)
+    // Only regenerate when entering this step
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const toggleQuestion = (id: string) => {
+  const removeQuestion = (id: string) => {
     onUpdate({
-      intelligenceBank: profile.intelligenceBank.map((q) =>
-        q.id === id ? { ...q, enabled: !q.enabled } : q
-      ),
+      intelligenceBank: profile.intelligenceBank.filter((q) => q.id !== id),
     })
   }
 
-  const enabledCount = profile.intelligenceBank.filter((q) => q.enabled).length
+  const addQuestion = () => {
+    if (!newQuestion.trim()) return
+    const id = `manual-${crypto.randomUUID()}`
+    onUpdate({
+      intelligenceBank: [
+        ...profile.intelligenceBank,
+        { id, text: newQuestion.trim(), enabled: true },
+      ],
+    })
+    setNewQuestion("")
+  }
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold">Intelligence Bank</h3>
         <p className="text-sm text-muted-foreground">
-          These are the top questions your audience is asking. Toggle the ones
-          you want the AI to answer in your content.
+          We think that these are the top questions your audience is asking about
+          your product. Add or remove questions if you feel it's not 100%
+          accurate.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {enabledCount} of {profile.intelligenceBank.length} questions enabled
+          {profile.intelligenceBank.length} questions
         </p>
       </div>
 
@@ -57,23 +70,46 @@ export function IntelligenceBankStep({
           {profile.intelligenceBank.map((question) => (
             <div
               key={question.id}
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-[#F8FAFC] transition-colors"
+              className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-[#F8FAFC] transition-colors group"
             >
-              <Label
-                htmlFor={question.id}
-                className="text-sm cursor-pointer flex-1 pr-4"
+              <span className="text-sm flex-1 pr-4">{question.text}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                onClick={() => removeQuestion(question.id)}
               >
-                {question.text}
-              </Label>
-              <Switch
-                id={question.id}
-                checked={question.enabled}
-                onCheckedChange={() => toggleQuestion(question.id)}
-              />
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
           ))}
         </div>
       </ScrollArea>
+
+      <div className="flex items-center gap-2">
+        <Input
+          value={newQuestion}
+          onChange={(e) => setNewQuestion(e.target.value)}
+          placeholder="Add a new question..."
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              addQuestion()
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={addQuestion}
+          disabled={!newQuestion.trim()}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </Button>
+      </div>
     </div>
   )
 }

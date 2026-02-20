@@ -1,4 +1,22 @@
 // ============================================================
+// User Profile (Firebase Auth + Firestore)
+// ============================================================
+export interface UserProfile {
+  uid: string
+  email: string
+  domain: string
+  displayName: string
+  role: "user" | "admin"
+  createdAt: string
+  trialStartDate: string
+  planTier: "trial" | "starter" | "growth" | "enterprise"
+  stripeCustomerId: string
+  stripeSubscriptionId: string
+  onboardingComplete: boolean
+  articlesUsed: number
+}
+
+// ============================================================
 // Company Profile
 // ============================================================
 export interface CompanyProfile {
@@ -10,6 +28,7 @@ export interface CompanyProfile {
   sitemapUrl: string
   contentSitemapUrls: string[]
   contentPaths: string[]
+  reviewPlatforms: string[]
   // Step 2 - The Goal
   ctaText: string
   ctaUrl: string

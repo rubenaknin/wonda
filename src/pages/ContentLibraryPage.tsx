@@ -8,6 +8,7 @@ import { usePlan } from "@/context/PlanContext"
 import { EmptyState } from "@/components/content-library/EmptyState"
 import { ArticleTable } from "@/components/content-library/ArticleTable"
 import { InlineArticleWizard } from "@/components/article-wizard/InlineArticleWizard"
+import { UpgradeModal } from "@/components/plan/UpgradeModal"
 import { CsvUploadPanel } from "@/components/content-library/CsvUploadPanel"
 import { KeywordResearchPanel } from "@/components/content-library/KeywordResearchPanel"
 import { ContentFilters, type FilterState } from "@/components/content-library/ContentFilters"
@@ -31,8 +32,9 @@ const defaultFilters: FilterState = {
 export function ContentLibraryPage() {
   const { articles, addArticle } = useArticles()
   const { profile } = useCompanyProfile()
-  const { isGrowthOrAbove } = usePlan()
+  const { isGrowthOrAbove, canGenerate } = usePlan()
   const [panel, setPanel] = useState<PanelMode>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const sitemapLoaded = useRef(false)
 
@@ -86,6 +88,10 @@ export function ContentLibraryPage() {
   }, [articles, debouncedSearch, filters.source, filters.contentPath, filters.status, filters.category])
 
   const handleCreateArticle = () => {
+    if (!canGenerate) {
+      setShowUpgradeModal(true)
+      return
+    }
     setPanel({ type: "wizard" })
   }
 
@@ -147,6 +153,8 @@ export function ContentLibraryPage() {
       {panel?.type === "research" && (
         <KeywordResearchPanel onClose={handleClosePanel} />
       )}
+
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {!panel && articles.length === 0 ? (
         <EmptyState onCreateArticle={handleCreateArticle} />

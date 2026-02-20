@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { aiFillField } from "@/lib/ai-fill"
+import { REVIEW_PLATFORMS } from "@/lib/constants"
 import type { CompanyProfile } from "@/types"
 
 interface BrandDnaStepProps {
@@ -236,6 +237,39 @@ export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
         <p className="text-xs text-muted-foreground">
           Enter the URL paths where your content lives (e.g., /blog, /learn)
         </p>
+      </div>
+
+      {/* Review Platforms */}
+      <div className="space-y-2">
+        <Label>Review Platforms</Label>
+        <p className="text-xs text-muted-foreground">
+          Select the platforms where your customers leave reviews.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {REVIEW_PLATFORMS.map((platform) => {
+            const isSelected = profile.reviewPlatforms?.includes(platform)
+            return (
+              <button
+                key={platform}
+                type="button"
+                onClick={() => {
+                  const current = profile.reviewPlatforms ?? []
+                  const updated = isSelected
+                    ? current.filter((p) => p !== platform)
+                    : [...current, platform]
+                  onUpdate({ reviewPlatforms: updated })
+                }}
+                className={`text-left rounded-lg px-3 py-2 border text-sm transition-all ${
+                  isSelected
+                    ? "border-[#0061FF] bg-[#0061FF]/5 text-[#0061FF]"
+                    : "border-border bg-white hover:border-[#0061FF]/30"
+                }`}
+              >
+                {platform}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

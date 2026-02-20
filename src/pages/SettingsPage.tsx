@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { Check, Lock, Globe, Unplug } from "lucide-react"
+import { Check, Lock, Globe, Unplug, Loader2 } from "lucide-react"
 import {
   Card,
   CardHeader,
@@ -14,10 +14,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
+import { useAuth } from "@/context/AuthContext"
 import { PLAN_DETAILS, STORAGE_KEYS } from "@/lib/constants"
+import { createCheckoutSession } from "@/lib/stripe-client"
 import type { PricingTier, CmsType, CmsIntegration, GscData } from "@/types"
 
-const CMS_OPTIONS: { type: CmsType; label: string; fields: { key: string; label: string; placeholder: string }[] }[] = [
+const CMS_OPTIONS: { type: CmsType; label: string; enterpriseOnly?: boolean; fields: { key: string; label: string; placeholder: string }[] }[] = [
   {
     type: "framer",
     label: "Framer",
@@ -47,6 +49,7 @@ const CMS_OPTIONS: { type: CmsType; label: string; fields: { key: string; label:
   {
     type: "api",
     label: "API",
+    enterpriseOnly: true,
     fields: [{ key: "webhookUrl", label: "Webhook URL", placeholder: "https://your-api.com/webhook" }],
   },
 ]
@@ -61,7 +64,9 @@ const DEFAULT_GSC_DATA: GscData = {
 
 export function SettingsPage() {
   const { profile, updateProfile } = useCompanyProfile()
-  const { plan, selectPlan } = usePlan()
+  const { plan, selectPlan, isTrialActive, trialDaysRemaining } = usePlan()
+  const { user } = useAuth()
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
 
   // CMS state
   const [cmsIntegration, setCmsIntegration] = useState<CmsIntegration>(() => {
@@ -73,9 +78,23 @@ export function SettingsPage() {
     }
   })
 
-  const handleSelectPlan = (tier: PricingTier) => {
+  const handleSelectPlan = async (tier: PricingTier) => {
     if (tier === "enterprise") {
       toast.info("Contact sales for Enterprise pricing")
+      return
+    }
+    // If user is on trial or wants to upgrade, redirect to Stripe
+    if (user && (user.planTier === "trial" || tier !== plan.tier)) {
+      try {
+        setUpgradeLoading(tier)
+        await createCheckoutSession(user.uid, tier, user.email)
+      } catch {
+        // Fallback to local plan switch for demo
+        selectPlan(tier)
+        toast.success(`Switched to ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan`)
+      } finally {
+        setUpgradeLoading(null)
+      }
       return
     }
     selectPlan(tier)
@@ -96,8 +115,11 @@ export function SettingsPage() {
   }
 
   // CMS handlers
+  const isEnterprise = plan.tier === "enterprise"
+
   const handleSelectCms = (type: CmsType) => {
-    if (plan.tier !== "enterprise") return
+    const option = CMS_OPTIONS.find((o) => o.type === type)
+    if (option?.enterpriseOnly && !isEnterprise) return
     setCmsIntegration((prev) => ({ ...prev, type, enabled: true }))
   }
 
@@ -114,7 +136,6 @@ export function SettingsPage() {
   }
 
   const selectedCmsOption = CMS_OPTIONS.find((o) => o.type === cmsIntegration.type)
-  const isEnterprise = plan.tier === "enterprise"
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -124,6 +145,25 @@ export function SettingsPage() {
           Configure your Wonda workspace.
         </p>
       </div>
+
+      {/* Trial Banner */}
+      {isTrialActive && (
+        <div className="rounded-lg p-4 border border-[#0061FF]/20 bg-[#0061FF]/5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] text-xs">Trial</Badge>
+                <span className="text-sm font-medium">
+                  {trialDaysRemaining} day{trialDaysRemaining !== 1 ? "s" : ""} remaining
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upgrade to continue generating content after your trial ends.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Plan Card */}
       <Card className="wonda-card">
@@ -141,6 +181,7 @@ export function SettingsPage() {
                 <button
                   key={p.tier}
                   onClick={() => handleSelectPlan(p.tier)}
+                  disabled={!!upgradeLoading}
                   className={`text-left rounded-lg p-4 border transition-all ${
                     isActive
                       ? "border-[#0061FF] bg-[#0061FF]/5"
@@ -153,6 +194,9 @@ export function SettingsPage() {
                       <Badge className="bg-[#0061FF]/10 text-[#0061FF] text-[10px]">
                         Current
                       </Badge>
+                    )}
+                    {upgradeLoading === p.tier && (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0061FF]" />
                     )}
                   </div>
                   <div className="text-2xl font-bold mb-3">
@@ -228,15 +272,7 @@ export function SettingsPage() {
       </Card>
 
       {/* Publishing Integration (CMS) */}
-      <Card className="wonda-card relative">
-        {!isEnterprise && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-[1px]">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Lock className="h-4 w-4" />
-              Enterprise plan required
-            </div>
-          </div>
-        )}
+      <Card className="wonda-card">
         <CardHeader>
           <CardTitle>Publishing Integration</CardTitle>
           <CardDescription>
@@ -247,17 +283,24 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {CMS_OPTIONS.map((option) => {
               const isSelected = cmsIntegration.type === option.type && cmsIntegration.enabled
+              const isLocked = option.enterpriseOnly && !isEnterprise
               return (
                 <button
                   key={option.type}
                   onClick={() => handleSelectCms(option.type)}
-                  className={`text-left rounded-lg p-3 border transition-all text-center ${
-                    isSelected
-                      ? "border-[#0061FF] bg-[#0061FF]/5"
-                      : "border-border bg-white hover:border-[#0061FF]/30"
+                  disabled={isLocked}
+                  className={`relative text-left rounded-lg p-3 border transition-all text-center ${
+                    isLocked
+                      ? "border-border bg-gray-50 opacity-60 cursor-not-allowed"
+                      : isSelected
+                        ? "border-[#0061FF] bg-[#0061FF]/5"
+                        : "border-border bg-white hover:border-[#0061FF]/30"
                   }`}
                 >
                   <span className="text-sm font-medium">{option.label}</span>
+                  {isLocked && (
+                    <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-foreground" />
+                  )}
                 </button>
               )
             })}
