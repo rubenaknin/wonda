@@ -221,42 +221,37 @@ export function OnboardingPage() {
     if (saving) return
     setSaving(true)
 
-    // Save all profile data with reviewed competitors and questions
+    // Save profile + mark onboarding complete in parallel, don't block UI
     updateProfile({
       ...profileData,
       competitors,
       intelligenceBank: questions,
     })
 
-    // Import sitemap articles into content library
+    // Import sitemap articles — fire all at once, don't await each
     const articlesToImport = sitemapArticlesRef.current
     for (const article of articlesToImport) {
       addArticle(article)
     }
 
-    // Mark onboarding complete
+    // Mark onboarding complete — fire and forget, transition immediately
     const currentUser = userRef.current
     if (currentUser?.uid) {
-      try {
-        await writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
-        await refreshUser()
-      } catch {
-        // Still proceed
-      }
+      writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
+        .then(() => refreshUser())
+        .catch(() => {})
     }
+
     setSaving(false)
     setPhase("complete")
   }
 
-  const handleNavigate = async (path: string) => {
+  const handleNavigate = (path: string) => {
     const currentUser = userRef.current
     if (currentUser?.uid && !currentUser.onboardingComplete) {
-      try {
-        await writeUserDoc(currentUser.uid, { onboardingComplete: true })
-        await refreshUser()
-      } catch {
-        // Continue anyway
-      }
+      writeUserDoc(currentUser.uid, { onboardingComplete: true })
+        .then(() => refreshUser())
+        .catch(() => {})
     }
     navigate(path, { replace: true })
   }
@@ -271,7 +266,7 @@ export function OnboardingPage() {
     handleFinishOnboardingWithData([], [])
   }
 
-  const handleFinishOnboardingWithData = async (
+  const handleFinishOnboardingWithData = (
     finalCompetitors: Competitor[],
     finalQuestions: IntelligenceBankQuestion[]
   ) => {
@@ -284,7 +279,7 @@ export function OnboardingPage() {
       intelligenceBank: finalQuestions,
     })
 
-    // Import sitemap articles into content library
+    // Import sitemap articles — fire all at once
     const articlesToImport = sitemapArticlesRef.current
     for (const article of articlesToImport) {
       addArticle(article)
@@ -292,13 +287,11 @@ export function OnboardingPage() {
 
     const currentUser = userRef.current
     if (currentUser?.uid) {
-      try {
-        await writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
-        await refreshUser()
-      } catch {
-        // Continue
-      }
+      writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
+        .then(() => refreshUser())
+        .catch(() => {})
     }
+
     setSaving(false)
     setPhase("complete")
   }

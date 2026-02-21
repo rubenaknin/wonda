@@ -8,6 +8,7 @@ import {
   FileText,
   TrendingUp,
   Globe,
+  ArrowRight,
   ArrowUpRight,
   Sparkles,
   UserCheck,
@@ -15,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { QuickActionCard } from "@/components/dashboard/QuickActionCard"
 import { SummaryCard } from "@/components/dashboard/SummaryCard"
 import { PageSpeedCard } from "@/components/dashboard/PageSpeedCard"
 import { useArticles } from "@/context/ArticlesContext"
@@ -44,6 +44,27 @@ export function DashboardPage() {
   const draftCount = articles.filter((a) => a.status === "draft").length
   const existingCount = articles.filter((a) => a.origin !== "wonda").length
   const wondaCount = articles.filter((a) => a.origin === "wonda").length
+
+  // Stale Wonda articles (older than 30 days)
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const staleWondaCount = articles.filter(
+    (a) => a.origin === "wonda" && new Date(a.updatedAt) < thirtyDaysAgo
+  ).length
+
+  // Refresh description logic
+  const refreshDescription = (() => {
+    if (wondaCount === 0 && existingCount > 0) {
+      return `${existingCount} existing article${existingCount !== 1 ? "s" : ""} ready to refresh`
+    }
+    if (staleWondaCount > 0) {
+      return `${staleWondaCount} article${staleWondaCount !== 1 ? "s" : ""} older than 30 days`
+    }
+    if (existingCount > 0) {
+      return `${existingCount} legacy article${existingCount !== 1 ? "s" : ""} to optimize`
+    }
+    return "Re-optimize published articles for better rankings"
+  })()
 
   const [gscData, setGscData] = useState<GscData | null>(null)
 
@@ -86,170 +107,107 @@ export function DashboardPage() {
 
   const displayName = user?.displayName?.split(" ")[0] || ""
 
-  // Build smart actions based on current state
-  const smartActions: {
-    title: string
-    description: string
-    icon: typeof FilePlus
-    actionLabel: string
-    onAction: () => void
-    variant: "default" | "primary"
-  }[] = []
-
-  if (profileCompletion < 100) {
-    smartActions.push({
-      title: "Complete Your Profile",
-      description: `Your profile is ${profileCompletion}% complete. A richer profile generates better, more targeted content.`,
-      icon: UserCheck,
-      actionLabel: "Complete Profile",
-      onAction: () => navigate(ROUTES.COMPANY_PROFILE),
-      variant: "primary",
-    })
-  }
-
-  if (articles.length === 0) {
-    smartActions.push({
-      title: "Generate Your First Article",
-      description: "Create your first SEO-optimized article using your company intelligence and AI.",
-      icon: FilePlus,
-      actionLabel: "Generate",
-      onAction: () => navigate(ROUTES.CONTENT_LIBRARY),
-      variant: smartActions.length === 0 ? "primary" : "default",
-    })
-  } else {
-    smartActions.push({
-      title: "Generate New Article",
-      description: "Create SEO-optimized content using your company intelligence and AI.",
-      icon: FilePlus,
-      actionLabel: "Generate",
-      onAction: () => navigate(ROUTES.CONTENT_LIBRARY),
-      variant: smartActions.length === 0 ? "primary" : "default",
-    })
-  }
-
-  if (existingCount > 0) {
-    smartActions.push({
-      title: "Refresh Existing Content",
-      description: "Update and re-optimize your published articles for better rankings.",
-      icon: RefreshCw,
-      actionLabel: "Refresh",
-      onAction: handleRefreshContent,
-      variant: "default",
-    })
-  }
-
-  smartActions.push({
-    title: "Update Intelligence",
-    description: "Keep your brand voice, keywords, and audience profile current.",
-    icon: Brain,
-    actionLabel: "Update",
-    onAction: () => navigate(ROUTES.COMPANY_PROFILE),
-    variant: "default",
-  })
-
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {greeting}{displayName ? `, ${displayName}` : ""}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Here's what's happening with your content engine.
-          </p>
-        </div>
-        <Button onClick={() => navigate(ROUTES.CONTENT_LIBRARY)}>
-          <FilePlus className="h-4 w-4 mr-2" />
-          New Article
-        </Button>
-      </div>
-
-      {/* Trial Banner */}
-      {isTrialActive && (
-        <Card className="border-[#0061FF]/20 bg-gradient-to-r from-[#0061FF]/5 to-transparent">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#0061FF]/10">
-                <Sparkles className="h-4 w-4 text-[#0061FF]" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  Trial &middot; {trialDaysRemaining} day{trialDaysRemaining !== 1 ? "s" : ""} remaining
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {articlesRemaining} article{articlesRemaining !== 1 ? "s" : ""} left in your trial
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-[#0061FF]/30 text-[#0061FF] hover:bg-[#0061FF]/5"
-              onClick={() => navigate(ROUTES.SETTINGS)}
-            >
-              Upgrade
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Profile Completion Banner */}
-      {profileCompletion < 100 && (
-        <Card className="border-[#F59E0B]/20 bg-gradient-to-r from-[#F59E0B]/5 to-transparent">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#F59E0B]/10">
-                <Brain className="h-4 w-4 text-[#F59E0B]" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  Complete your company profile
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {profileCompletion}% complete &middot; Better profiles generate better content
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-[#F59E0B]/30 text-[#F59E0B] hover:bg-[#F59E0B]/5"
-              onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
-            >
-              Complete Profile
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Actions (above summary) */}
+    <div className="space-y-6">
+      {/* Header — clean, no button */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className={`grid grid-cols-1 gap-4 ${
-          smartActions.length >= 4 ? "md:grid-cols-4" : smartActions.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"
-        }`}>
-          {smartActions.map((action, i) => (
-            <QuickActionCard
-              key={action.title}
-              title={action.title}
-              description={action.description}
-              icon={action.icon}
-              actionLabel={action.actionLabel}
-              onAction={action.onAction}
-              variant={i === 0 ? action.variant : "default"}
-            />
-          ))}
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {greeting}{displayName ? `, ${displayName}` : ""}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Here's what's happening with your content engine.
+        </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Row 1: Action cards — compact horizontal row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Complete profile (conditional) or Generate first/new article */}
+        {profileCompletion < 100 ? (
+          <Card
+            className="wonda-card group cursor-pointer border-[#F59E0B]/30 hover:border-[#F59E0B]/50 hover:shadow-md transition-all"
+            onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#F59E0B]/10 shrink-0">
+                <UserCheck className="h-4 w-4 text-[#F59E0B]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">Complete Profile</p>
+                <p className="text-xs text-muted-foreground">{profileCompletion}% done</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Generate */}
+        <Card
+          className="wonda-card group cursor-pointer border-[#0061FF]/20 hover:border-[#0061FF]/40 hover:shadow-md transition-all"
+          onClick={() => navigate(ROUTES.CONTENT_LIBRARY)}
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-[#0061FF]/10 shrink-0">
+              <FilePlus className="h-4 w-4 text-[#0061FF]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">
+                {articles.length === 0 ? "First Article" : "New Article"}
+              </p>
+              <p className="text-xs text-muted-foreground">AI-powered SEO content</p>
+            </div>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </CardContent>
+        </Card>
+
+        {/* Refresh (always show) */}
+        <Card
+          className={`wonda-card group cursor-pointer hover:shadow-md transition-all ${
+            existingCount > 0 || staleWondaCount > 0
+              ? "border-[#F59E0B]/20 hover:border-[#F59E0B]/40"
+              : "hover:border-border/80"
+          }`}
+          onClick={existingCount > 0 || staleWondaCount > 0 ? handleRefreshContent : () => navigate(ROUTES.CONTENT_LIBRARY)}
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={`p-2 rounded-lg shrink-0 ${
+              existingCount > 0 || staleWondaCount > 0 ? "bg-[#F59E0B]/10" : "bg-muted"
+            }`}>
+              <RefreshCw className={`h-4 w-4 ${
+                existingCount > 0 || staleWondaCount > 0 ? "text-[#F59E0B]" : "text-muted-foreground"
+              }`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">Refresh Content</p>
+              <p className="text-xs text-muted-foreground truncate">{refreshDescription}</p>
+            </div>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </CardContent>
+        </Card>
+
+        {/* Intelligence */}
+        <Card
+          className="wonda-card group cursor-pointer hover:border-[#8B5CF6]/40 hover:shadow-md transition-all"
+          onClick={() => navigate(ROUTES.COMPANY_PROFILE)}
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-[#8B5CF6]/10 shrink-0">
+              <Brain className="h-4 w-4 text-[#8B5CF6]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">Intelligence</p>
+              <p className="text-xs text-muted-foreground">Brand voice & strategy</p>
+            </div>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 2: Metrics + PageSpeed side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <SummaryCard
           label="Total Articles"
           value={articles.length}
-          subtitle={`${existingCount} legacy · ${wondaCount} Wonda${draftCount > 0 ? ` · ${draftCount} ready to publish` : ""}`}
+          subtitle={`${existingCount} legacy · ${wondaCount} Wonda${draftCount > 0 ? ` · ${draftCount} drafts` : ""}`}
           icon={FileText}
           accentColor="text-[#0061FF]"
         />
@@ -283,17 +241,38 @@ export function DashboardPage() {
         <PageSpeedCard />
       </div>
 
-      {/* Plan Info */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary" className="text-[10px] capitalize">
-          {plan.tier} Plan
-        </Badge>
-        <span>&middot;</span>
-        <span>
-          {articlesRemaining === Infinity
-            ? "Unlimited articles"
-            : `${articlesRemaining} articles remaining this cycle`}
-        </span>
+      {/* Row 3: Plan info + trial */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant="secondary" className="text-[10px] capitalize">
+            {plan.tier} Plan
+          </Badge>
+          <span>&middot;</span>
+          <span>
+            {articlesRemaining === Infinity
+              ? "Unlimited articles"
+              : `${articlesRemaining} articles remaining`}
+          </span>
+        </div>
+        {isTrialActive && (
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1.5 text-xs text-[#0061FF]">
+              <Sparkles className="h-3 w-3" />
+              <span className="font-medium">
+                {trialDaysRemaining}d left &middot; {articlesRemaining} article{articlesRemaining !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs border-[#0061FF]/30 text-[#0061FF] hover:bg-[#0061FF]/5"
+              onClick={() => navigate(ROUTES.SETTINGS)}
+            >
+              Upgrade
+              <ArrowUpRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

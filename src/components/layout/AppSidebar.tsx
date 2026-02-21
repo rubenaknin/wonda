@@ -48,7 +48,7 @@ export function AppSidebar() {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <SidebarHeader className="px-3 py-4 flex flex-row items-center gap-2 group-data-[collapsible=icon]:px-2">
+      <SidebarHeader className="px-3 py-4 flex flex-row items-center gap-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
         {clientDomain ? (
           <>
             <img
@@ -73,7 +73,7 @@ export function AppSidebar() {
               src="/wonda-logo.png"
               alt="Wonda"
               className="hidden group-data-[collapsible=icon]:block"
-              style={{ height: 20, width: 20, objectFit: "contain", objectPosition: "left" }}
+              style={{ height: 20, width: 20, objectFit: "contain" }}
             />
           </>
         )}

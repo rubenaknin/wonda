@@ -30,12 +30,14 @@ import {
   Sparkles,
   Trash2,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useArticles } from "@/context/ArticlesContext"
+import { useCompanyProfile } from "@/context/CompanyProfileContext"
 // formatRelativeTime no longer used — dates are now editable date inputs
 import {
   FilterModal,
@@ -418,6 +420,7 @@ export function SpreadsheetTable({
   onBulkRefresh,
 }: SpreadsheetTableProps) {
   const { addArticle, updateArticle, deleteArticle } = useArticles()
+  const { profile } = useCompanyProfile()
 
   // Track which article IDs are "new" inline rows
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
@@ -556,9 +559,6 @@ export function SpreadsheetTable({
               : label === "Publish"
                 ? "text-[#10B981] hover:text-[#10B981]/80"
                 : "text-[#F59E0B] hover:text-[#F59E0B]/80"
-          const hasContent = Boolean(article.bodyHtml)
-          const isLegacy = article.origin !== "wonda"
-          const showPreview = hasContent || isLegacy
           return (
             <div className="flex items-center gap-1">
               <Button
@@ -570,7 +570,6 @@ export function SpreadsheetTable({
                 onClick={(e) => {
                   e.stopPropagation()
                   if (label === "Generate") {
-                    // Remove from new rows tracking
                     setNewRowIds((prev) => {
                       const next = new Set(prev)
                       next.delete(article.id)
@@ -587,20 +586,6 @@ export function SpreadsheetTable({
                 <Icon className="h-3 w-3" />
                 {label}
               </Button>
-              {showPreview && label !== "Generate" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  title="Preview article"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onPreviewArticle(article.id)
-                  }}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-              )}
             </div>
           )
         },
@@ -670,16 +655,45 @@ export function SpreadsheetTable({
       status: {
         accessorKey: "status",
         header: "Status",
-        size: 110,
+        size: 140,
         cell: ({ row, getValue }) => {
+          const article = row.original
           const status = getValue<ArticleStatus>()
-          const isLegacy = row.original.origin !== "wonda"
+          const isLegacy = article.origin !== "wonda"
           const displayLabel = isLegacy || status === "published" ? "Live" : status
           const styleKey = isLegacy ? "published" : status
+
+          // Build the real article URL
+          const hasContent = Boolean(article.bodyHtml) || isLegacy
+          let articleUrl = ""
+          if (article.contentPath) {
+            // Legacy/sitemap articles have the full URL in contentPath
+            articleUrl = article.contentPath.startsWith("http")
+              ? article.contentPath
+              : `${profile.websiteUrl}${article.contentPath}`
+          } else if (article.slug && profile.websiteUrl) {
+            const basePath = profile.contentPaths?.[0] || `${profile.websiteUrl}/blog`
+            articleUrl = `${basePath}/${article.slug}`
+          }
+
           return (
-            <Badge className={`text-xs capitalize ${STATUS_STYLES[styleKey]}`}>
-              {displayLabel}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge className={`text-xs capitalize ${STATUS_STYLES[styleKey]}`}>
+                {displayLabel}
+              </Badge>
+              {hasContent && articleUrl && (
+                <a
+                  href={articleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title={articleUrl}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
           )
         },
       },
@@ -803,7 +817,7 @@ export function SpreadsheetTable({
         },
       },
     }),
-    [onEditArticle, onGenerateArticle, onPreviewArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle]
+    [onEditArticle, onGenerateArticle, onPreviewArticle, newRowIds, handleInlineCellUpdate, handleGenerateKeyword, handleGenerateTitle, profile]
   )
 
   // Build ordered columns array: select + rowNumber + ordered data cols + actions col
