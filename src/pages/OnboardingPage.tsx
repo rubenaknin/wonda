@@ -63,6 +63,7 @@ export function OnboardingPage() {
 
   // Smooth progress (0–100)
   const [smoothProgress, setSmoothProgress] = useState(0)
+  const [saving, setSaving] = useState(false)
 
   // Dynamic step labels
   const [stepLabels, setStepLabels] = useState([
@@ -217,6 +218,9 @@ export function OnboardingPage() {
   }
 
   const handleFinishOnboarding = async () => {
+    if (saving) return
+    setSaving(true)
+
     // Save all profile data with reviewed competitors and questions
     updateProfile({
       ...profileData,
@@ -240,6 +244,7 @@ export function OnboardingPage() {
         // Still proceed
       }
     }
+    setSaving(false)
     setPhase("complete")
   }
 
@@ -270,6 +275,9 @@ export function OnboardingPage() {
     finalCompetitors: Competitor[],
     finalQuestions: IntelligenceBankQuestion[]
   ) => {
+    if (saving) return
+    setSaving(true)
+
     updateProfile({
       ...profileData,
       competitors: finalCompetitors,
@@ -291,6 +299,7 @@ export function OnboardingPage() {
         // Continue
       }
     }
+    setSaving(false)
     setPhase("complete")
   }
 
@@ -420,10 +429,7 @@ export function OnboardingPage() {
                   }}
                 />
               </div>
-              <div className="flex justify-between mt-2">
-                <span className="text-xs text-muted-foreground">
-                  Step {Math.min(analysisStep + 1, STEP_DELAYS.length)} of {STEP_DELAYS.length}
-                </span>
+              <div className="flex justify-end mt-2">
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {Math.round(smoothProgress)}%
                 </span>
@@ -622,7 +628,15 @@ export function OnboardingPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-4">
+            {/* spacer for sticky bar */}
+            <div className="h-20" />
+          </div>
+        )}
+
+        {/* Sticky bar: Competitors */}
+        {phase === "review-competitors" && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-t border-border">
+            <div className="max-w-4xl mx-auto px-8 py-4 flex items-center gap-3">
               <Button
                 variant="ghost"
                 className="text-muted-foreground"
@@ -705,10 +719,19 @@ export function OnboardingPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-4">
+            {/* spacer for sticky bar */}
+            <div className="h-20" />
+          </div>
+        )}
+
+        {/* Sticky bar: Questions */}
+        {phase === "review-questions" && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-t border-border">
+            <div className="max-w-4xl mx-auto px-8 py-4 flex items-center gap-3">
               <Button
                 variant="ghost"
                 onClick={() => setPhase("review-competitors")}
+                disabled={saving}
               >
                 Back
               </Button>
@@ -716,12 +739,22 @@ export function OnboardingPage() {
                 variant="ghost"
                 className="text-muted-foreground"
                 onClick={handleSkipQuestions}
+                disabled={saving}
               >
                 Skip <span className="text-xs ml-1 text-muted-foreground/60">(not recommended)</span>
               </Button>
-              <Button onClick={handleFinishOnboarding} className="h-11 px-6">
-                Continue
-                <ArrowRight className="h-4 w-4 ml-1" />
+              <Button onClick={handleFinishOnboarding} className="h-11 px-6" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
               </Button>
             </div>
           </div>

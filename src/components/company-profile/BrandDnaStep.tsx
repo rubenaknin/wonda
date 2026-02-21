@@ -238,7 +238,7 @@ export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
               <Input
                 value={path}
                 onChange={(e) => updateContentPath(index, e.target.value)}
-                placeholder="/blog"
+                placeholder="https://yourcompany.com/blog"
               />
               <Button
                 type="button"
@@ -262,7 +262,7 @@ export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
           Add Content Path
         </Button>
         <p className="text-xs text-muted-foreground">
-          Enter the URL paths where your content lives (e.g., /blog, /learn)
+          Full URLs where your content lives (e.g., https://yourcompany.com/blog or https://blog.yourcompany.com)
         </p>
       </div>
 

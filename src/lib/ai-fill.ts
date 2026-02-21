@@ -86,7 +86,7 @@ function aiFillFromDomainFallback(domain: string): Partial<CompanyProfile> {
     websiteUrl: website,
     sitemapUrl: `${website}/sitemap.xml`,
     contentSitemapUrls: [`${website}/blog-sitemap.xml`],
-    contentPaths: ["/blog"],
+    contentPaths: [`${website}/blog`],
     ctaText: "Start Free Trial",
     ctaUrl: `${website}/trial`,
     competitors: generateMockCompetitors(domain),
@@ -115,7 +115,9 @@ export async function aiFillFromDomain(domain: string): Promise<Partial<CompanyP
       websiteUrl: website,
       sitemapUrl: `${website}/sitemap.xml`,
       contentSitemapUrls: [`${website}/blog-sitemap.xml`],
-      contentPaths: ["/blog"],
+      contentPaths: (data.contentPaths || ["/blog"]).map((p: string) =>
+        p.startsWith("http") ? p : `${website}${p.startsWith("/") ? "" : "/"}${p}`
+      ),
       ctaText: data.ctaText || "Start Free Trial",
       ctaUrl: data.ctaUrl || `${website}/trial`,
       competitors: (data.competitors || []).map((c: { name: string; url: string }) => ({
@@ -148,7 +150,8 @@ export function aiFillAll(
     updates.contentSitemapUrls = ["https://acme.com/blog-sitemap.xml"]
   }
   if (profile.contentPaths.length === 0) {
-    updates.contentPaths = ["/blog", "/learn"]
+    const base = profile.websiteUrl || "https://example.com"
+    updates.contentPaths = [`${base}/blog`, `${base}/learn`]
   }
   return updates
 }

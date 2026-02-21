@@ -22,14 +22,19 @@ import {
 } from "@/components/ui/sidebar"
 import { ROUTES } from "@/lib/constants"
 import { useAuth } from "@/context/AuthContext"
+import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useChat } from "@/context/ChatContext"
 
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
+  const { profile } = useCompanyProfile()
   const { setOpen } = useSidebar()
   const { sidebarOpen: chatSidebarOpen, toggleSidebar: toggleChatSidebar } = useChat()
+
+  const clientDomain = user?.domain || (profile.websiteUrl ? profile.websiteUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "")
+  const clientName = profile.name || clientDomain?.split(".")[0] || "Wonda"
 
   const handleSignOut = async () => {
     await signOut()
@@ -44,18 +49,34 @@ export function AppSidebar() {
       onMouseLeave={() => setOpen(false)}
     >
       <SidebarHeader className="px-3 py-4 flex flex-row items-center gap-2 group-data-[collapsible=icon]:px-2">
-        <img
-          src="/wonda-logo.png"
-          alt="Wonda"
-          className="group-data-[collapsible=icon]:hidden"
-          style={{ height: 22, width: "auto", maxWidth: 100, objectFit: "contain" }}
-        />
-        <img
-          src="/wonda-logo.png"
-          alt="Wonda"
-          className="hidden group-data-[collapsible=icon]:block"
-          style={{ height: 20, width: 20, objectFit: "contain", objectPosition: "left" }}
-        />
+        {clientDomain ? (
+          <>
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${clientDomain}&sz=32`}
+              alt={clientName}
+              className="w-6 h-6 rounded shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).src = "/wonda-logo.png" }}
+            />
+            <span className="text-sm font-semibold truncate group-data-[collapsible=icon]:hidden">
+              {clientName}
+            </span>
+          </>
+        ) : (
+          <>
+            <img
+              src="/wonda-logo.png"
+              alt="Wonda"
+              className="group-data-[collapsible=icon]:hidden"
+              style={{ height: 22, width: "auto", maxWidth: 100, objectFit: "contain" }}
+            />
+            <img
+              src="/wonda-logo.png"
+              alt="Wonda"
+              className="hidden group-data-[collapsible=icon]:block"
+              style={{ height: 20, width: 20, objectFit: "contain", objectPosition: "left" }}
+            />
+          </>
+        )}
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

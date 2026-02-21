@@ -95,20 +95,21 @@ export async function deleteUserArticle(uid: string, articleId: string): Promise
 // ---- Account Deletion ----
 
 export async function deleteAllUserData(uid: string): Promise<void> {
-  // Delete all articles
+  // Delete all articles + data docs in parallel
   const articlesRef = collection(db, "users", uid, "articles")
   const articlesSnap = await getDocs(articlesRef)
-  for (const articleDoc of articlesSnap.docs) {
-    await deleteDoc(articleDoc.ref)
-  }
 
-  // Delete data subcollection docs
-  await deleteDoc(doc(db, "users", uid, "data", "companyProfile")).catch(() => {})
-  await deleteDoc(doc(db, "users", uid, "data", "settings")).catch(() => {})
-  await deleteDoc(doc(db, "users", uid, "data", "cmsIntegration")).catch(() => {})
-  await deleteDoc(doc(db, "users", uid, "data", "gscData")).catch(() => {})
+  await Promise.all([
+    // Delete all articles in parallel
+    ...articlesSnap.docs.map((d) => deleteDoc(d.ref)),
+    // Delete data subcollection docs in parallel
+    deleteDoc(doc(db, "users", uid, "data", "companyProfile")).catch(() => {}),
+    deleteDoc(doc(db, "users", uid, "data", "settings")).catch(() => {}),
+    deleteDoc(doc(db, "users", uid, "data", "cmsIntegration")).catch(() => {}),
+    deleteDoc(doc(db, "users", uid, "data", "gscData")).catch(() => {}),
+  ])
 
-  // Delete user doc
+  // Delete user doc last
   await deleteDoc(doc(db, "users", uid))
 }
 

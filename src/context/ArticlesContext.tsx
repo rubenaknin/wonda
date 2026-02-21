@@ -19,15 +19,16 @@ function writeCache(articles: Article[]) {
   try { localStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(articles)) } catch {}
 }
 
+const UNSET = Symbol("unset")
+
 export function ArticlesProvider({ children, uid }: { children: ReactNode; uid?: string }) {
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(false)
-  const prevUidRef = useRef<string | undefined>(undefined)
+  const prevUidRef = useRef<string | typeof UNSET | undefined>(UNSET)
 
-  // When uid changes: reset state, then load from Firestore
+  // When uid changes (or on first mount): reset state, then load from Firestore
   useEffect(() => {
-    // Skip the initial mount if uid hasn't actually changed
-    if (prevUidRef.current === uid) return
+    if (prevUidRef.current !== UNSET && prevUidRef.current === uid) return
     prevUidRef.current = uid
 
     if (!uid) {
@@ -37,8 +38,9 @@ export function ArticlesProvider({ children, uid }: { children: ReactNode; uid?:
       return
     }
 
-    // New user signed in — load from Firestore
+    // New user signed in (or fresh mount) — always load from Firestore
     setLoading(true)
+    setArticles([]) // clear stale data immediately
     readUserArticles(uid)
       .then((data) => {
         setArticles(data)
