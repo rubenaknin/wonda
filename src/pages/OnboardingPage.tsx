@@ -119,7 +119,7 @@ export function OnboardingPage() {
     setAnalysisStep(ANALYSIS_STEPS.length)
 
     // Generate profile data
-    const data = aiFillFromDomain(dom)
+    const data = await aiFillFromDomain(dom)
     setProfileData(data)
     setCompetitors(data.competitors || [])
     setQuestions(data.intelligenceBank || [])

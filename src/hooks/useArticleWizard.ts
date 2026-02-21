@@ -42,6 +42,8 @@ type WizardAction =
       faqHtml: string
       faqItems: FaqItem[]
       title: string
+      metaTitle: string
+      metaDescription: string
     }
   | { type: "GENERATION_ERROR"; error: string }
   | { type: "UPDATE_BODY"; bodyHtml: string }
@@ -123,6 +125,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
         faqHtml: action.faqHtml,
         faqItems: action.faqItems,
         title: action.title,
+        metaTitle: action.metaTitle || state.metaTitle,
+        metaDescription: action.metaDescription || state.metaDescription,
       }
     case "GENERATION_ERROR":
       return {

@@ -65,7 +65,7 @@ function generateMockQuestions(name: string): IntelligenceBankQuestion[] {
   }))
 }
 
-export function aiFillFromDomain(domain: string): Partial<CompanyProfile> {
+function aiFillFromDomainFallback(domain: string): Partial<CompanyProfile> {
   const namePart = domain.split(".")[0] ?? "Company"
   const name = namePart.charAt(0).toUpperCase() + namePart.slice(1)
   const website = `https://${domain}`
@@ -82,6 +82,46 @@ export function aiFillFromDomain(domain: string): Partial<CompanyProfile> {
     ctaUrl: `${website}/trial`,
     competitors: generateMockCompetitors(domain),
     intelligenceBank: generateMockQuestions(name),
+  }
+}
+
+export async function aiFillFromDomain(domain: string): Promise<Partial<CompanyProfile>> {
+  const website = `https://${domain}`
+
+  try {
+    const res = await fetch("/api/domain-enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    })
+
+    if (!res.ok) throw new Error("API error")
+
+    const data = await res.json()
+
+    return {
+      name: data.name || domain.split(".")[0] || "Company",
+      description: data.description || "",
+      valueProp: data.valueProp || "",
+      websiteUrl: website,
+      sitemapUrl: `${website}/sitemap.xml`,
+      contentSitemapUrls: [`${website}/blog-sitemap.xml`],
+      contentPaths: ["/blog"],
+      ctaText: data.ctaText || "Start Free Trial",
+      ctaUrl: data.ctaUrl || `${website}/trial`,
+      competitors: (data.competitors || []).map((c: { name: string; url: string }) => ({
+        id: crypto.randomUUID(),
+        name: c.name,
+        url: c.url,
+      })),
+      intelligenceBank: (data.intelligenceBank || []).map((text: string) => ({
+        id: crypto.randomUUID(),
+        text,
+        enabled: true,
+      })),
+    }
+  } catch {
+    return aiFillFromDomainFallback(domain)
   }
 }
 

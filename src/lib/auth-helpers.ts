@@ -1,3 +1,5 @@
+import { ALL_LOCAL_STORAGE_KEYS } from "@/lib/constants"
+
 export function extractDomain(email: string): string {
   return email.split("@")[1] ?? ""
 }
@@ -28,4 +30,10 @@ const PERSONAL_EMAIL_DOMAINS = [
 export function isPersonalEmail(email: string): boolean {
   const domain = extractDomain(email)
   return PERSONAL_EMAIL_DOMAINS.includes(domain)
+}
+
+export function clearAllLocalData(): void {
+  for (const key of ALL_LOCAL_STORAGE_KEYS) {
+    localStorage.removeItem(key)
+  }
 }

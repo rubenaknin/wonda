@@ -18,7 +18,7 @@ import {
 } from "firebase/auth"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
-import { extractDomain, isAdminEmail } from "@/lib/auth-helpers"
+import { extractDomain, isAdminEmail, clearAllLocalData } from "@/lib/auth-helpers"
 import { migrateLocalStorageToFirestore } from "@/lib/migration"
 import type { UserProfile } from "@/types"
 
@@ -127,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    clearAllLocalData()
     await firebaseSignOut(auth)
     setUser(null)
     setFirebaseUser(null)

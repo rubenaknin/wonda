@@ -37,7 +37,7 @@ interface GenerateStepProps {
   status: string
   onStart: () => void
   onProgress: (progress: number, status: string) => void
-  onComplete: (bodyHtml: string, faqHtml: string, faqItems: FaqItem[], title: string) => void
+  onComplete: (bodyHtml: string, faqHtml: string, faqItems: FaqItem[], title: string, metaTitle: string, metaDescription: string) => void
   onError: (error: string) => void
 }
 
@@ -123,7 +123,10 @@ export function GenerateStep({
 <h2>Getting Started</h2>
 <p>Ready to transform your content strategy? ${profile.ctaText || "Get started today"} and see the difference that strategic, SEO-optimized content can make for your business.</p>`
 
-    return { bodyHtml, faqHtml, faqItems, title }
+    const metaTitle = `${title} | ${companyName}`.slice(0, 60)
+    const metaDescription = `Learn about ${keyword}. A comprehensive guide by ${companyName}.`.slice(0, 160)
+
+    return { bodyHtml, faqHtml, faqItems, title, metaTitle, metaDescription }
   }, [keyword, profile, selectedQuestions])
 
   const handleGenerate = async () => {
@@ -150,8 +153,8 @@ export function GenerateStep({
       if (currentProgress >= 100) {
         currentProgress = 100
         if (intervalRef.current) clearInterval(intervalRef.current)
-        const { bodyHtml, faqHtml, faqItems, title } = generateMockContent()
-        onComplete(bodyHtml, faqHtml, faqItems, title)
+        const { bodyHtml, faqHtml, faqItems, title, metaTitle, metaDescription } = generateMockContent()
+        onComplete(bodyHtml, faqHtml, faqItems, title, metaTitle, metaDescription)
       } else {
         onProgress(
           Math.round(currentProgress),

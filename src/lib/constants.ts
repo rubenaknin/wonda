@@ -10,6 +10,14 @@ export const STORAGE_KEYS = {
   CHAT_HISTORY: "wonda_chat_history",
 } as const
 
+export const ALL_LOCAL_STORAGE_KEYS = [
+  ...Object.values(STORAGE_KEYS),
+  "wonda_articles_seeded",
+  "wonda_table_version",
+  "wonda_table_views",
+  "wonda_active_view",
+] as const
+
 export const ROUTES = {
   DASHBOARD: "/",
   COMPANY_PROFILE: "/company-profile",

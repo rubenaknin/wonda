@@ -9,6 +9,7 @@ import {
   type ColumnDef,
   type SortingState,
   type VisibilityState,
+  type ColumnSizingState,
 } from "@tanstack/react-table"
 import {
   Filter,
@@ -55,6 +56,7 @@ interface TableView {
   sorting: SortingState
   globalFilter: string
   filterGroup: FilterGroup
+  columnSizing?: ColumnSizingState
 }
 
 interface SpreadsheetTableProps {
@@ -79,7 +81,6 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
 
 const VIEWS_KEY = "wonda_table_views"
 const ACTIVE_VIEW_KEY = "wonda_active_view"
-const SEEDED_KEY = "wonda_articles_seeded"
 const TABLE_VERSION_KEY = "wonda_table_version"
 const CURRENT_TABLE_VERSION = "6" // bump to force reset of stale localStorage views
 
@@ -225,62 +226,6 @@ function generateMockTitle(keyword: string): string {
     .join(" ")
 }
 
-// ── Seed mock articles ─────────────────────────────────────────
-const MOCK_KEYWORDS = [
-  "best project management tools 2025",
-  "how to improve team productivity",
-  "remote work communication strategies",
-  "agile vs waterfall methodology",
-  "employee onboarding best practices",
-  "customer retention strategies SaaS",
-  "how to reduce churn rate",
-  "data-driven marketing guide",
-  "B2B content marketing strategy",
-  "SEO for SaaS companies",
-]
-
-const SEED_RANKING_TYPES = [
-  "SEO/LLM", "SEO/LLM", "Leadership", "SEO/LLM", "How-To",
-  "Product", "SEO/LLM", "Leadership", "Comparison", "SEO/LLM",
-]
-
-function generateSeedArticles(): Article[] {
-  const baseDate = new Date()
-  return MOCK_KEYWORDS.map((keyword, i) => {
-    const created = new Date(baseDate)
-    created.setDate(created.getDate() - (MOCK_KEYWORDS.length - i) * 3)
-    const slug = keyword
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-    const title = keyword
-      .split(" ")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ")
-    return {
-      id: crypto.randomUUID(),
-      title,
-      keyword,
-      slug,
-      category: "blog" as const,
-      status: "published" as const,
-      origin: "existing" as const,
-      rankingType: SEED_RANKING_TYPES[i],
-      bodyHtml: `<h1>${title}</h1><p>Article content for ${keyword}.</p>`,
-      faqHtml: "",
-      faqItems: [],
-      metaTitle: title,
-      metaDescription: `Learn about ${keyword} in this comprehensive guide.`,
-      ctaText: "Start Free Trial",
-      ctaUrl: "/trial",
-      internalLinks: [],
-      selectedQuestions: [],
-      createdAt: created.toISOString(),
-      updatedAt: created.toISOString(),
-    }
-  })
-}
-
 // ── Inline editable cell ──────────────────────────────────────
 function InlineEditCell({
   articleId,
@@ -325,7 +270,7 @@ function InlineEditCell({
   if (!editing && !isNew) {
     return (
       <span
-        className={`${field === "keyword" ? "font-medium" : "text-sm"} cursor-text`}
+        className={`${field === "keyword" ? "font-medium" : "text-sm"} cursor-text truncate block`}
         onClick={(e) => {
           e.stopPropagation()
           setEditing(true)
@@ -477,18 +422,6 @@ export function SpreadsheetTable({
   // Track which article IDs are "new" inline rows
   const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
 
-  // Seed default articles on first ever load
-  useEffect(() => {
-    if (localStorage.getItem(SEEDED_KEY)) return
-    if (articles.length > 0) {
-      localStorage.setItem(SEEDED_KEY, "1")
-      return
-    }
-    const seeds = generateSeedArticles()
-    for (const a of seeds) addArticle(a)
-    localStorage.setItem(SEEDED_KEY, "1")
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Version migration: reset stale views when version bumps ──
   const [migrated] = useState(() => {
     const storedVersion = localStorage.getItem(TABLE_VERSION_KEY)
@@ -526,6 +459,9 @@ export function SpreadsheetTable({
   const [filterGroup, setFilterGroup] = useState<FilterGroup>(
     activeView.filterGroup || emptyFilterGroup
   )
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(
+    activeView.columnSizing || {}
+  )
   const [rowSelection, setRowSelection] = useState({})
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showColumnManager, setShowColumnManager] = useState(false)
@@ -546,6 +482,7 @@ export function SpreadsheetTable({
                 sorting,
                 globalFilter,
                 filterGroup,
+                columnSizing,
               }
             : v
         )
@@ -554,7 +491,7 @@ export function SpreadsheetTable({
       })
     }, 500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [columnVisibility, columnOrder, sorting, globalFilter, filterGroup, activeViewId])
+  }, [columnVisibility, columnOrder, sorting, globalFilter, filterGroup, columnSizing, activeViewId])
 
   // ── Filter logic ───────────────────────────
   const filteredByAdvanced = useMemo(() => {
@@ -715,7 +652,7 @@ export function SpreadsheetTable({
         header: "Slug",
         size: 180,
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground text-sm font-mono">
+          <span className="text-muted-foreground text-sm font-mono truncate block max-w-[180px]">
             {getValue<string>() || "—"}
           </span>
         ),
@@ -943,11 +880,15 @@ export function SpreadsheetTable({
       columnVisibility,
       globalFilter,
       rowSelection,
+      columnSizing,
     },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
+    onColumnSizingChange: setColumnSizing,
+    enableColumnResizing: true,
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -981,6 +922,7 @@ export function SpreadsheetTable({
     setSorting([])
     setGlobalFilter("")
     setFilterGroup(emptyFilterGroup)
+    setColumnSizing({})
   }, [views])
 
   const handleSwitchView = useCallback(
@@ -994,6 +936,7 @@ export function SpreadsheetTable({
       setSorting(view.sorting)
       setGlobalFilter(view.globalFilter)
       setFilterGroup(view.filterGroup || emptyFilterGroup)
+      setColumnSizing(view.columnSizing || {})
     },
     [views]
   )
@@ -1348,7 +1291,7 @@ export function SpreadsheetTable({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className={`text-left text-xs font-medium text-muted-foreground px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
+                    className={`relative text-left text-xs font-medium text-muted-foreground px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
                       header.id === "actions" ? "sticky right-0 bg-[#FAFBFC] z-20" : ""
                     }`}
                     style={{ width: header.getSize() }}
@@ -1373,6 +1316,15 @@ export function SpreadsheetTable({
                           <span className="text-[10px]">↓</span>
                         )}
                       </div>
+                    )}
+                    {header.column.getCanResize() && (
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none hover:bg-[#0061FF] ${
+                          header.column.getIsResizing() ? "bg-[#0061FF]" : "bg-transparent"
+                        }`}
+                      />
                     )}
                   </th>
                 ))}
@@ -1406,10 +1358,10 @@ export function SpreadsheetTable({
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className={`px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap ${
+                      className={`px-3 py-2 border-r border-border last:border-r-0 whitespace-nowrap overflow-hidden ${
                         cell.column.id === "actions" ? "sticky right-0 bg-white group-hover/row:bg-[#F8FAFC]" : ""
                       }`}
-                      style={{ maxWidth: cell.column.getSize() }}
+                      style={{ width: cell.column.getSize(), maxWidth: cell.column.getSize() }}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

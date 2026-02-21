@@ -263,13 +263,15 @@ export function InlineArticleWizard({
                 status: s,
               })
             }
-            onComplete={(bodyHtml, faqHtml, faqItems, title) => {
+            onComplete={(bodyHtml, faqHtml, faqItems, title, metaTitle, metaDescription) => {
               dispatch({
                 type: "GENERATION_COMPLETE",
                 bodyHtml,
                 faqHtml,
                 faqItems,
                 title,
+                metaTitle,
+                metaDescription,
               })
               addAssistantMessage(
                 `Content generated for **${title || state.keyword}**! You can now review and edit it in the editor.`

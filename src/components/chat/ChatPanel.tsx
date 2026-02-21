@@ -88,7 +88,7 @@ export function ChatPanel({ variant, onClose }: ChatPanelProps) {
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4"
-        style={{ minHeight: 0 }}
+        style={{ minHeight: 0, overscrollBehavior: "contain" }}
       >
         <div className="space-y-3">
           {/* Welcome back prompt */}
