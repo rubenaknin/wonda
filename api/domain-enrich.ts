@@ -59,7 +59,9 @@ export default async function handler(
       return res.status(500).json({ error: "No response from AI" })
     }
 
-    const data = JSON.parse(textBlock.text)
+    // Strip markdown code fences if present
+    const raw = textBlock.text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "")
+    const data = JSON.parse(raw)
     return res.status(200).json(data)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : "Domain enrichment failed"
