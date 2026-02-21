@@ -44,7 +44,7 @@ export async function parseSitemapUrls(contentSitemapUrls: string[]): Promise<Ar
           updatedAt: now,
           origin: "existing",
           source: "sitemap",
-          contentPath: item.contentPath,
+          contentPath: item.url,
         })
       }
     } catch {

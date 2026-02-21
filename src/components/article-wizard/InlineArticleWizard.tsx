@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { toast } from "sonner"
 import { X, Trash2, RefreshCw, Archive } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useArticleWizard } from "@/hooks/useArticleWizard"
 import { useArticles } from "@/context/ArticlesContext"
@@ -75,6 +75,8 @@ export function InlineArticleWizard({
   const visibleStepIndex = visibleSteps.indexOf(state.currentStep)
   const isFirstVisibleStep = visibleStepIndex === 0
   const isLastVisibleStep = visibleStepIndex === visibleSteps.length - 1
+  const isPostGenStep = ["editor", "metadata", "export"].includes(state.currentStep)
+  const generationTriggered = useRef(false)
 
   useEffect(() => {
     if (editArticleId) {
@@ -96,8 +98,8 @@ export function InlineArticleWizard({
             metaTitle: article.metaTitle,
             metaDescription: article.metaDescription,
             metaImageUrl: article.metaImageUrl || "",
-            ctaText: article.ctaText,
-            ctaUrl: article.ctaUrl,
+            ctaText: article.ctaText || profile.ctaText || "",
+            ctaUrl: article.ctaUrl || profile.ctaUrl || "",
             title: article.title,
             authorId: article.authorId || "",
             generationProgress: article.bodyHtml ? 100 : 0,
@@ -214,6 +216,17 @@ export function InlineArticleWizard({
     }
   }
 
+  // Auto-advance from generate to editor after generation completes
+  useEffect(() => {
+    if (generationTriggered.current && state.generationProgress === 100 && state.currentStep === "generate") {
+      generationTriggered.current = false
+      const timer = setTimeout(() => {
+        handleNextStep()
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [state.generationProgress, state.currentStep]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const renderStep = () => {
     switch (state.currentStep) {
       case "keyword":
@@ -253,7 +266,10 @@ export function InlineArticleWizard({
             isGenerating={state.isGenerating}
             progress={state.generationProgress}
             status={state.generationStatus}
-            onStart={() => dispatch({ type: "START_GENERATION" })}
+            onStart={() => {
+              dispatch({ type: "START_GENERATION" })
+              generationTriggered.current = true
+            }}
             onProgress={(p, s) =>
               dispatch({
                 type: "UPDATE_GENERATION_PROGRESS",
@@ -275,6 +291,8 @@ export function InlineArticleWizard({
             onError={(error) =>
               dispatch({ type: "GENERATION_ERROR", error })
             }
+            onUpdateKeyword={(k) => dispatch({ type: "SET_KEYWORD", keyword: k })}
+            onUpdateCategory={(c) => dispatch({ type: "SET_CATEGORY", category: c as ArticleCategory })}
           />
         )
       case "editor":
@@ -335,15 +353,12 @@ export function InlineArticleWizard({
   return (
     <Card className="wonda-card">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle>
-            {editArticleId ? "Edit Article" : "New Article"}
-          </CardTitle>
-          {(skipPreSteps || hasExistingContent) && state.keyword && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {state.keyword}
-              {state.title && state.title !== state.keyword && ` — ${state.title}`}
-            </p>
+        <div className="min-w-0 flex-1 mr-4">
+          <h3 className="text-base font-semibold truncate">
+            {state.title || state.keyword || (editArticleId ? "Edit Article" : "New Article")}
+          </h3>
+          {isPostGenStep && state.keyword && state.title && state.title !== state.keyword && (
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{state.keyword}</p>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -381,11 +396,30 @@ export function InlineArticleWizard({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <WizardProgress
-          currentStep={state.currentStep}
-          visibleSteps={visibleSteps}
-          onStepClick={(step) => dispatch({ type: "GO_TO_STEP", step })}
-        />
+        {isPostGenStep ? (
+          <div className="flex gap-1 border-b border-border -mt-2">
+            {visibleSteps.filter((s) => ["editor", "metadata", "export"].includes(s)).map((step) => (
+              <button
+                key={step}
+                type="button"
+                className={`px-3 py-1.5 text-sm border-b-2 -mb-px transition-colors ${
+                  state.currentStep === step
+                    ? "border-foreground text-foreground font-medium"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => dispatch({ type: "GO_TO_STEP", step: step as WizardStepType })}
+              >
+                {step === "editor" ? "Content" : step === "metadata" ? "SEO & CTA" : "Export"}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <WizardProgress
+            currentStep={state.currentStep}
+            visibleSteps={visibleSteps}
+            onStepClick={(step) => dispatch({ type: "GO_TO_STEP", step })}
+          />
+        )}
 
         <div>{renderStep()}</div>
 

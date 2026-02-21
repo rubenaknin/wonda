@@ -44,7 +44,7 @@ import {
   matchesFilterGroup,
   type FilterGroup,
 } from "./FilterModal"
-import type { Article, ArticleStatus, WizardStep } from "@/types"
+import type { Article, ArticleStatus, WizardStep, CompanyProfile } from "@/types"
 
 // ── Ranking type options ────────────────────────────────────
 const RANKING_TYPE_OPTIONS = ["SEO/LLM", "Leadership", "Thought Leadership", "Product", "Comparison", "How-To"] as const
@@ -206,19 +206,32 @@ function getNextAction(
   return { label: "Refresh", icon: RefreshCw, step: "editor" }
 }
 
-// Mock keyword/title generators
-const MOCK_GENERATED_KEYWORDS = [
-  "best practices for content marketing",
-  "how to improve SEO rankings",
-  "SaaS growth strategies 2025",
-  "customer onboarding best practices",
-  "B2B lead generation techniques",
-]
-
-function generateMockKeyword(): string {
-  return MOCK_GENERATED_KEYWORDS[
-    Math.floor(Math.random() * MOCK_GENERATED_KEYWORDS.length)
-  ]
+function generateRelevantKeyword(profile: CompanyProfile): string {
+  const candidates: string[] = []
+  for (const q of (profile.intelligenceBank || [])) {
+    if (q.text) {
+      const clean = q.text
+        .replace(/^(what|how|why|when|where|which|can|does|do|is|are|should)\s+(is|are|does|do|can|should|would)?\s*/i, "")
+        .replace(/\?$/, "")
+        .trim()
+        .toLowerCase()
+      if (clean.length > 5 && clean.length < 60) candidates.push(clean)
+    }
+  }
+  for (const comp of (profile.competitors || [])) {
+    if (comp.name) {
+      candidates.push(`${comp.name.toLowerCase()} alternative`)
+      candidates.push(`best ${comp.name.toLowerCase()} alternatives`)
+    }
+  }
+  if (profile.valueProp) {
+    candidates.push(profile.valueProp.toLowerCase().slice(0, 50))
+  }
+  if (candidates.length === 0) {
+    const name = profile.name || "your product"
+    candidates.push(`best ${name.toLowerCase()} alternatives`, `how to use ${name.toLowerCase()}`, `${name.toLowerCase()} guide`)
+  }
+  return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
 function generateMockTitle(keyword: string): string {
@@ -520,13 +533,13 @@ export function SpreadsheetTable({
 
   const handleGenerateKeyword = useCallback(
     (articleId: string) => {
-      const keyword = generateMockKeyword()
+      const keyword = generateRelevantKeyword(profile)
       updateArticle(articleId, {
         keyword,
         updatedAt: new Date().toISOString(),
       })
     },
-    [updateArticle]
+    [updateArticle, profile]
   )
 
   const handleGenerateTitle = useCallback(
@@ -667,21 +680,36 @@ export function SpreadsheetTable({
           const hasContent = Boolean(article.bodyHtml) || isLegacy
           let articleUrl = ""
           if (article.contentPath) {
-            // Legacy/sitemap articles have the full URL in contentPath
-            articleUrl = article.contentPath.startsWith("http")
-              ? article.contentPath
-              : `${profile.websiteUrl}${article.contentPath}`
+            if (article.contentPath.startsWith("http")) {
+              articleUrl = article.contentPath
+            } else {
+              // Relative path like /blog — append slug for full URL
+              const base = `${profile.websiteUrl || ""}${article.contentPath}`
+              articleUrl = article.slug ? `${base}/${article.slug}` : base
+            }
           } else if (article.slug && profile.websiteUrl) {
-            const basePath = profile.contentPaths?.[0] || `${profile.websiteUrl}/blog`
+            const basePath = (profile.contentPaths?.[0] || `${profile.websiteUrl}/blog`).replace(/\/$/, "")
             articleUrl = `${basePath}/${article.slug}`
           }
+
+          const isDraft = !isLegacy && status === "draft"
+          const isLive = isLegacy || status === "published"
 
           return (
             <div className="flex items-center gap-1.5">
               <Badge className={`text-xs capitalize ${STATUS_STYLES[styleKey]}`}>
                 {displayLabel}
               </Badge>
-              {hasContent && articleUrl && (
+              {isDraft && hasContent && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onPreviewArticle(article.id) }}
+                  className="text-muted-foreground hover:text-[#0061FF] transition-colors"
+                  title="Preview article"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {isLive && articleUrl && (
                 <a
                   href={articleUrl}
                   target="_blank"

@@ -1,14 +1,23 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle, Loader2, Zap } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useWebhook } from "@/context/WebhookContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
 import { sendWebhook } from "@/lib/webhook"
 import { ROUTES } from "@/lib/constants"
-import type { FaqItem } from "@/types"
+import type { FaqItem, ArticleCategory } from "@/types"
+
+const CATEGORY_OPTIONS: { value: ArticleCategory; label: string }[] = [
+  { value: "blog", label: "Blog Post" },
+  { value: "landing-page", label: "Landing Page" },
+  { value: "comparison", label: "Comparison" },
+  { value: "how-to", label: "How-To Guide" },
+  { value: "glossary", label: "Glossary" },
+]
 
 const PROGRESS_STAGES = [
   { threshold: 20, status: "Analyzing keyword intent..." },
@@ -39,6 +48,8 @@ interface GenerateStepProps {
   onProgress: (progress: number, status: string) => void
   onComplete: (bodyHtml: string, faqHtml: string, faqItems: FaqItem[], title: string, metaTitle: string, metaDescription: string) => void
   onError: (error: string) => void
+  onUpdateKeyword?: (keyword: string) => void
+  onUpdateCategory?: (category: string) => void
 }
 
 export function GenerateStep({
@@ -54,6 +65,8 @@ export function GenerateStep({
   onProgress,
   onComplete,
   onError,
+  onUpdateKeyword,
+  onUpdateCategory,
 }: GenerateStepProps) {
   const navigate = useNavigate()
   const { webhookUrls } = useWebhook()
@@ -180,12 +193,9 @@ export function GenerateStep({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">Generate Article</h3>
-        <p className="text-sm text-muted-foreground">
-          Ready to generate your SEO-optimized article. This will send all your
-          settings to the n8n workflow.
-        </p>
+      <div className="text-center space-y-1 py-2">
+        <p className="text-sm text-muted-foreground">Generate article for</p>
+        <h3 className="text-xl font-semibold">{keyword || "your keyword"}</h3>
       </div>
 
       {profileIncomplete && (
@@ -195,7 +205,7 @@ export function GenerateStep({
             Company Profile Incomplete ({profileCompletion}%)
           </div>
           <p className="text-xs text-[#F59E0B]/80">
-            Complete your company profile before generating articles. This ensures your brand voice, URLs, and intelligence bank are used in content generation.
+            Complete your company profile before generating. This ensures your brand voice and intelligence bank are used.
           </p>
           <Button
             size="sm"
@@ -215,7 +225,7 @@ export function GenerateStep({
             Upgrade Required
           </div>
           <p className="text-xs text-[#0061FF]/70">
-            You've reached your article limit or your trial has expired. Upgrade your plan to continue generating content.
+            You've reached your article limit or your trial has expired.
           </p>
           <Button
             size="sm"
@@ -227,48 +237,57 @@ export function GenerateStep({
         </div>
       )}
 
-      <div className="wonda-card p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Keyword:</span>
-            <p className="font-medium">{keyword}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Category:</span>
-            <p className="font-medium capitalize">
-              {category.replace("-", " ")}
-            </p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Internal Links:</span>
-            <p className="font-medium">{internalLinks.length} selected</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Questions:</span>
-            <p className="font-medium">{selectedQuestions.length} selected</p>
-          </div>
+      {/* De-emphasized editable settings */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-muted/30 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Keyword</span>
+          <Input
+            value={keyword}
+            onChange={(e) => onUpdateKeyword?.(e.target.value)}
+            className="h-7 text-sm w-48"
+            disabled={isGenerating || progress === 100}
+          />
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Category</span>
+          <select
+            value={category || "blog"}
+            onChange={(e) => onUpdateCategory?.(e.target.value)}
+            className="h-7 text-xs bg-background border border-input rounded-md px-2"
+            disabled={isGenerating || progress === 100}
+          >
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        {internalLinks.length > 0 && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{internalLinks.length} internal link{internalLinks.length !== 1 ? "s" : ""}</span>
+          </div>
+        )}
       </div>
 
       {isGenerating ? (
-        <div className="space-y-3">
+        <div className="space-y-4 py-4">
           <Progress value={progress} className="h-2" />
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {status}
           </div>
         </div>
       ) : progress === 100 ? (
-        <div className="text-sm text-[#10B981] font-medium">
-          Article generated successfully! Click Next to review and edit.
+        <div className="text-center py-4 text-sm text-[#10B981] font-medium">
+          Article generated! Moving to editor...
         </div>
       ) : (
         <Button
           onClick={handleGenerate}
-          className="w-full"
+          className="w-full bg-[#0061FF] hover:bg-[#0061FF]/90"
           size="lg"
           disabled={profileIncomplete || !canGenerate}
         >
+          <Zap className="h-4 w-4 mr-2" />
           Generate Article
         </Button>
       )}
