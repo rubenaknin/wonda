@@ -172,24 +172,6 @@ export function OnboardingPage() {
       .then((data) => {
         enrichData = data
         enrichResultRef.current = data
-        // Update competitor step label
-        const compNames = (data.competitors || []).slice(0, 2).map((c) => c.name)
-        if (compNames.length > 0) {
-          setStepLabels((prev) => {
-            const next = [...prev]
-            next[2] = `Analyzing ${compNames.join(", ")}...`
-            return next
-          })
-        }
-        // Update questions step label
-        const qCount = (data.intelligenceBank || []).length
-        if (qCount > 0) {
-          setStepLabels((prev) => {
-            const next = [...prev]
-            next[3] = `Generated ${qCount} personalized question${qCount !== 1 ? "s" : ""}`
-            return next
-          })
-        }
       })
       .catch(() => {
         // Enrich failed, keep default labels
