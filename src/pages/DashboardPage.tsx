@@ -10,6 +10,7 @@ import {
   Globe,
   ArrowUpRight,
   Sparkles,
+  UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -84,6 +85,67 @@ export function DashboardPage() {
   })()
 
   const displayName = user?.displayName?.split(" ")[0] || ""
+
+  // Build smart actions based on current state
+  const smartActions: {
+    title: string
+    description: string
+    icon: typeof FilePlus
+    actionLabel: string
+    onAction: () => void
+    variant: "default" | "primary"
+  }[] = []
+
+  if (profileCompletion < 100) {
+    smartActions.push({
+      title: "Complete Your Profile",
+      description: `Your profile is ${profileCompletion}% complete. A richer profile generates better, more targeted content.`,
+      icon: UserCheck,
+      actionLabel: "Complete Profile",
+      onAction: () => navigate(ROUTES.COMPANY_PROFILE),
+      variant: "primary",
+    })
+  }
+
+  if (articles.length === 0) {
+    smartActions.push({
+      title: "Generate Your First Article",
+      description: "Create your first SEO-optimized article using your company intelligence and AI.",
+      icon: FilePlus,
+      actionLabel: "Generate",
+      onAction: () => navigate(ROUTES.CONTENT_LIBRARY),
+      variant: smartActions.length === 0 ? "primary" : "default",
+    })
+  } else {
+    smartActions.push({
+      title: "Generate New Article",
+      description: "Create SEO-optimized content using your company intelligence and AI.",
+      icon: FilePlus,
+      actionLabel: "Generate",
+      onAction: () => navigate(ROUTES.CONTENT_LIBRARY),
+      variant: smartActions.length === 0 ? "primary" : "default",
+    })
+  }
+
+  if (existingCount > 0) {
+    smartActions.push({
+      title: "Refresh Existing Content",
+      description: "Update and re-optimize your published articles for better rankings.",
+      icon: RefreshCw,
+      actionLabel: "Refresh",
+      onAction: handleRefreshContent,
+      variant: "default",
+    })
+  }
+
+  smartActions.push({
+    title: "Update Intelligence",
+    description: "Keep your brand voice, keywords, and audience profile current.",
+    icon: Brain,
+    actionLabel: "Update",
+    onAction: () => navigate(ROUTES.COMPANY_PROFILE),
+    variant: "default",
+  })
 
   return (
     <div className="space-y-8">
@@ -162,6 +224,26 @@ export function DashboardPage() {
         </Card>
       )}
 
+      {/* Quick Actions (above summary) */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className={`grid grid-cols-1 gap-4 ${
+          smartActions.length >= 4 ? "md:grid-cols-4" : smartActions.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"
+        }`}>
+          {smartActions.map((action, i) => (
+            <QuickActionCard
+              key={action.title}
+              title={action.title}
+              description={action.description}
+              icon={action.icon}
+              actionLabel={action.actionLabel}
+              onAction={action.onAction}
+              variant={i === 0 ? action.variant : "default"}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SummaryCard
@@ -212,34 +294,6 @@ export function DashboardPage() {
             ? "Unlimited articles"
             : `${articlesRemaining} articles remaining this cycle`}
         </span>
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <QuickActionCard
-            title="Generate New Article"
-            description="Create SEO-optimized content using your company intelligence and AI."
-            icon={FilePlus}
-            actionLabel="Generate"
-            onAction={() => navigate(ROUTES.CONTENT_LIBRARY)}
-          />
-          <QuickActionCard
-            title="Refresh Existing Content"
-            description="Update and re-optimize your published articles for better rankings."
-            icon={RefreshCw}
-            actionLabel="Refresh"
-            onAction={handleRefreshContent}
-          />
-          <QuickActionCard
-            title="Update Intelligence"
-            description="Keep your brand voice, keywords, and audience profile current."
-            icon={Brain}
-            actionLabel="Update"
-            onAction={() => navigate(ROUTES.COMPANY_PROFILE)}
-          />
-        </div>
       </div>
     </div>
   )

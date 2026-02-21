@@ -104,6 +104,11 @@
     border-radius: 12px;
 }
 
+/* Onboarding — premium display font */
+.font-onboarding {
+    font-family: 'Plus Jakarta Sans', var(--font-sans), sans-serif;
+}
+
 /* Data mono — for slugs, URLs, keywords */
 .font-data {
     font-family: 'JetBrains Mono', ui-monospace, monospace;

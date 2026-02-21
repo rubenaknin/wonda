@@ -51,7 +51,21 @@ function AiFillButton({
   )
 }
 
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url.replace(/^https?:\/\//, "").split("/")[0] || ""
+  }
+}
+
 export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
+  const mainSitemapDomain = getDomain(profile.sitemapUrl)
+  const shouldShowContentSitemaps =
+    profile.contentSitemapUrls.length > 1 ||
+    (profile.contentSitemapUrls.length === 1 &&
+      getDomain(profile.contentSitemapUrls[0]) !== mainSitemapDomain)
+
   const addSitemapUrl = () => {
     onUpdate({ contentSitemapUrls: [...profile.contentSitemapUrls, ""] })
   }
@@ -164,43 +178,56 @@ export function BrandDnaStep({ profile, onUpdate }: BrandDnaStepProps) {
       </div>
 
       {/* Content Sitemap URLs */}
-      <div className="space-y-2">
-        <Label>Content Sitemap URLs</Label>
+      {shouldShowContentSitemaps ? (
         <div className="space-y-2">
-          {profile.contentSitemapUrls.map((url, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                type="url"
-                value={url}
-                onChange={(e) => updateSitemapUrl(index, e.target.value)}
-                placeholder="https://yourcompany.com/blog-sitemap.xml"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => removeSitemapUrl(index)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+          <Label>Content Sitemap URLs</Label>
+          <div className="space-y-2">
+            {profile.contentSitemapUrls.map((url, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  type="url"
+                  value={url}
+                  onChange={(e) => updateSitemapUrl(index, e.target.value)}
+                  placeholder="https://yourcompany.com/blog-sitemap.xml"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeSitemapUrl(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={addSitemapUrl}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Sitemap URL
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Add sitemap URLs for your content sections. Used for generating
+            internal links and loading existing articles.
+          </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={addSitemapUrl}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add Sitemap URL
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          Add sitemap URLs for your content sections. Used for generating
-          internal links and loading existing articles.
-        </p>
-      </div>
+      ) : (
+        <div>
+          <button
+            type="button"
+            className="text-sm text-[#0061FF] hover:underline flex items-center gap-1"
+            onClick={addSitemapUrl}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add content sitemap
+          </button>
+        </div>
+      )}
 
       {/* Content Paths */}
       <div className="space-y-2">

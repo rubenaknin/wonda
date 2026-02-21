@@ -6,17 +6,14 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/AuthContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
+import { useArticles } from "@/context/ArticlesContext"
 import { writeUserDoc } from "@/lib/firestore"
 import { aiFillFromDomain } from "@/lib/ai-fill"
+import { parseSitemapUrls } from "@/lib/sitemap"
 import { isPersonalEmail } from "@/lib/auth-helpers"
-import type { Competitor, IntelligenceBankQuestion, CompanyProfile } from "@/types"
+import type { Competitor, IntelligenceBankQuestion, CompanyProfile, Article } from "@/types"
 
-const ANALYSIS_STEPS = [
-  { label: "Analyzing your search presence", delay: 1500 },
-  { label: "Identifying your top competitors", delay: 2000 },
-  { label: "Looking for your top opportunities", delay: 1500 },
-  { label: "Generating your content strategy", delay: 1000 },
-]
+const STEP_DELAYS = [3000, 3000, 3000, 3000]
 
 const TOTAL_ONBOARDING_STEPS = 7 // dots indicator
 
@@ -52,6 +49,7 @@ export function OnboardingPage() {
   const navigate = useNavigate()
   const { user, firebaseUser, refreshUser } = useAuth()
   const { updateProfile } = useCompanyProfile()
+  const { addArticle } = useArticles()
   const [phase, setPhase] = useState<Phase>("loading")
   const [analysisStep, setAnalysisStep] = useState(0)
   const [customDomain, setCustomDomain] = useState("")
@@ -62,10 +60,22 @@ export function OnboardingPage() {
   const userRef = useRef(user)
   userRef.current = user
 
+  // Dynamic step labels
+  const [stepLabels, setStepLabels] = useState([
+    "Analyzing your search presence...",
+    "Scanning your sitemap...",
+    "Researching competitors...",
+    "Generating your intelligence bank...",
+  ])
+
   // Generated data for review steps
   const [competitors, setCompetitors] = useState<Competitor[]>([])
   const [questions, setQuestions] = useState<IntelligenceBankQuestion[]>([])
   const [profileData, setProfileData] = useState<Partial<CompanyProfile>>({})
+
+  // Store enrichment + sitemap results in refs for use after animation
+  const enrichResultRef = useRef<Partial<CompanyProfile> | null>(null)
+  const sitemapArticlesRef = useRef<Article[]>([])
 
   // New competitor inputs
   const [newCompName, setNewCompName] = useState("")
@@ -111,22 +121,96 @@ export function OnboardingPage() {
     setPhase("analyzing")
     setAnalysisStep(0)
 
-    // Run animation steps
-    for (let i = 0; i < ANALYSIS_STEPS.length; i++) {
-      setAnalysisStep(i)
-      await new Promise((r) => setTimeout(r, ANALYSIS_STEPS[i].delay))
+    // Update step 0 with the actual domain
+    setStepLabels((prev) => {
+      const next = [...prev]
+      next[0] = `Analyzing ${dom}...`
+      return next
+    })
+
+    // Track completion of API calls and timer
+    let timerDone = false
+    let apisDone = false
+    let enrichData: Partial<CompanyProfile> | null = null
+    let sitemapArticles: Article[] = []
+
+    const resolveIfReady = () => {
+      if (timerDone && apisDone && enrichData) {
+        // Set final state and transition
+        setProfileData(enrichData)
+        setCompetitors(enrichData.competitors || [])
+        setQuestions(enrichData.intelligenceBank || [])
+        enrichResultRef.current = enrichData
+        sitemapArticlesRef.current = sitemapArticles
+
+        setTimeout(() => setPhase("review-competitors"), 500)
+      }
     }
-    setAnalysisStep(ANALYSIS_STEPS.length)
 
-    // Generate profile data
-    const data = await aiFillFromDomain(dom)
-    setProfileData(data)
-    setCompetitors(data.competitors || [])
-    setQuestions(data.intelligenceBank || [])
+    // Fire API calls in parallel
+    const sitemapPromise = parseSitemapUrls([`https://${dom}/sitemap.xml`])
+      .then((articles) => {
+        sitemapArticles = articles
+        sitemapArticlesRef.current = articles
+        if (articles.length > 0) {
+          setStepLabels((prev) => {
+            const next = [...prev]
+            next[1] = `Found ${articles.length} blog post${articles.length !== 1 ? "s" : ""}`
+            return next
+          })
+        }
+      })
+      .catch(() => {
+        // Sitemap parse failed, keep default label
+      })
 
-    // Small delay then go to review competitors
-    await new Promise((r) => setTimeout(r, 500))
-    setPhase("review-competitors")
+    const enrichPromise = aiFillFromDomain(dom)
+      .then((data) => {
+        enrichData = data
+        enrichResultRef.current = data
+        // Update competitor step label
+        const compNames = (data.competitors || []).slice(0, 2).map((c) => c.name)
+        if (compNames.length > 0) {
+          setStepLabels((prev) => {
+            const next = [...prev]
+            next[2] = `Analyzing ${compNames.join(", ")}...`
+            return next
+          })
+        }
+        // Update questions step label
+        const qCount = (data.intelligenceBank || []).length
+        if (qCount > 0) {
+          setStepLabels((prev) => {
+            const next = [...prev]
+            next[3] = `Generated ${qCount} personalized question${qCount !== 1 ? "s" : ""}`
+            return next
+          })
+        }
+      })
+      .catch(() => {
+        // Enrich failed, keep default labels
+      })
+
+    // Run animation timer in parallel
+    const timerPromise = (async () => {
+      for (let i = 0; i < STEP_DELAYS.length; i++) {
+        setAnalysisStep(i)
+        await new Promise((r) => setTimeout(r, STEP_DELAYS[i]))
+      }
+      setAnalysisStep(STEP_DELAYS.length)
+    })()
+
+    // Wait for APIs
+    Promise.all([sitemapPromise, enrichPromise]).then(() => {
+      apisDone = true
+      resolveIfReady()
+    })
+
+    // Wait for timer
+    timerPromise.then(() => {
+      timerDone = true
+      resolveIfReady()
+    })
   }, [])
 
   const handleDomainSubmit = (e: React.FormEvent) => {
@@ -143,6 +227,12 @@ export function OnboardingPage() {
       competitors,
       intelligenceBank: questions,
     })
+
+    // Import sitemap articles into content library
+    const articlesToImport = sitemapArticlesRef.current
+    for (const article of articlesToImport) {
+      addArticle(article)
+    }
 
     // Mark onboarding complete
     const currentUser = userRef.current
@@ -190,6 +280,12 @@ export function OnboardingPage() {
       intelligenceBank: finalQuestions,
     })
 
+    // Import sitemap articles into content library
+    const articlesToImport = sitemapArticlesRef.current
+    for (const article of articlesToImport) {
+      addArticle(article)
+    }
+
     const currentUser = userRef.current
     if (currentUser?.uid) {
       try {
@@ -236,8 +332,8 @@ export function OnboardingPage() {
     setNewQuestion("")
   }
 
-  const isAnalysisDone = analysisStep >= ANALYSIS_STEPS.length
-  const analysisProgress = (analysisStep / ANALYSIS_STEPS.length) * 100
+  const isAnalysisDone = analysisStep >= STEP_DELAYS.length
+  const analysisProgress = (analysisStep / STEP_DELAYS.length) * 100
 
   // Compute which dot is active
   const dotStep = (() => {
@@ -254,7 +350,7 @@ export function OnboardingPage() {
   const companyName = profileData.name || domain.split(".")[0] || ""
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] font-onboarding">
       {/* Header */}
       <div className="flex items-center justify-between px-8 py-6 max-w-5xl mx-auto">
         <div className="text-xl font-bold tracking-tight">
@@ -327,7 +423,7 @@ export function OnboardingPage() {
 
             {/* Steps checklist */}
             <div className="max-w-xl mx-auto rounded-xl border border-border bg-white p-6 space-y-4">
-              {ANALYSIS_STEPS.map((step, index) => {
+              {stepLabels.map((label, index) => {
                 const isDone = index < analysisStep
                 const isActive = index === analysisStep && !isAnalysisDone
 
@@ -339,7 +435,7 @@ export function OnboardingPage() {
                     }`}
                   >
                     <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                      {isDone || (isAnalysisDone && index === ANALYSIS_STEPS.length - 1) ? (
+                      {isDone || (isAnalysisDone && index === stepLabels.length - 1) ? (
                         <div className="w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center">
                           <Check className="h-3.5 w-3.5 text-white" />
                         </div>
@@ -350,7 +446,7 @@ export function OnboardingPage() {
                       )}
                     </div>
                     <span
-                      className={`text-sm ${
+                      className={`text-sm transition-all duration-300 ${
                         isDone || isAnalysisDone
                           ? "text-[#10B981] font-medium"
                           : isActive
@@ -358,7 +454,7 @@ export function OnboardingPage() {
                             : "text-muted-foreground"
                       }`}
                     >
-                      {step.label}
+                      {label}
                     </span>
                   </div>
                 )

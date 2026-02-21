@@ -12,6 +12,7 @@ interface QuickActionCardProps {
   icon: LucideIcon
   actionLabel: string
   onAction: () => void
+  variant?: "default" | "primary"
 }
 
 export function QuickActionCard({
@@ -20,18 +21,29 @@ export function QuickActionCard({
   icon: Icon,
   actionLabel,
   onAction,
+  variant = "default",
 }: QuickActionCardProps) {
+  const isPrimary = variant === "primary"
+
   return (
     <Card
-      className="wonda-card group hover:border-[#0061FF]/40 hover:shadow-lg transition-all duration-300 cursor-pointer"
+      className={`wonda-card group hover:shadow-lg transition-all duration-300 cursor-pointer ${
+        isPrimary
+          ? "border-[#0061FF]/40 bg-gradient-to-br from-[#0061FF]/[0.03] to-transparent hover:border-[#0061FF]/60"
+          : "hover:border-[#0061FF]/40"
+      }`}
       onClick={onAction}
     >
-      <CardContent className="p-6 space-y-4">
-        <div className="p-3 rounded-xl bg-[#0061FF]/5 w-fit group-hover:bg-[#0061FF]/10 transition-colors">
-          <Icon className="h-6 w-6 text-[#0061FF]" />
+      <CardContent className={`space-y-4 ${isPrimary ? "p-7" : "p-6"}`}>
+        <div className={`rounded-xl w-fit transition-colors ${
+          isPrimary
+            ? "p-3.5 bg-[#0061FF]/10 group-hover:bg-[#0061FF]/15"
+            : "p-3 bg-[#0061FF]/5 group-hover:bg-[#0061FF]/10"
+        }`}>
+          <Icon className={`text-[#0061FF] ${isPrimary ? "h-7 w-7" : "h-6 w-6"}`} />
         </div>
         <div className="space-y-1.5">
-          <h3 className="font-semibold text-base">{title}</h3>
+          <h3 className={`font-semibold ${isPrimary ? "text-lg" : "text-base"}`}>{title}</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {description}
           </p>
@@ -39,7 +51,9 @@ export function QuickActionCard({
         <Button
           variant="ghost"
           size="sm"
-          className="px-0 text-[#0061FF] hover:text-[#0061FF] hover:bg-transparent group-hover:translate-x-1 transition-transform"
+          className={`px-0 text-[#0061FF] hover:text-[#0061FF] hover:bg-transparent group-hover:translate-x-1 transition-transform ${
+            isPrimary ? "font-semibold" : ""
+          }`}
         >
           {actionLabel}
           <ArrowRight className="h-3.5 w-3.5 ml-1" />
