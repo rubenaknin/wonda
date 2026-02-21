@@ -10,7 +10,7 @@ Return a JSON object with exactly these fields:
 - ctaText: string — The primary CTA text found on their site (e.g. "Start Free Trial", "Get Started", "Book a Demo")
 - ctaUrl: string — The CTA URL (use the actual link from the site if found, otherwise construct one)
 - competitors: array of 5 objects, each with "name" (string) and "url" (string) — Real competitors in the same space based on what the company actually does. Use actual company names and domains.
-- intelligenceBank: array of 15 strings — Questions that the company's target audience would search for, relevant to their actual industry and product. Make them specific and SEO-relevant.
+- intelligenceBank: array of 15 strings — Questions that the company's target audience would search for, relevant to their actual industry and product. Make them specific and SEO-relevant. IMPORTANT: Every question MUST include the company name. For example, if the company is "Acme", write "How does Acme improve SEO performance?" not "How to improve SEO performance?".
 
 Important:
 - Base your analysis primarily on the ACTUAL website content provided, not assumptions from the domain name

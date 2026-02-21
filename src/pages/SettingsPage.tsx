@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Check, Lock, Globe, Unplug, Loader2, Building2, ArrowRight } from "lucide-react"
+import { Check, Lock, Globe, Unplug, Loader2, Building2, ArrowRight, AlertTriangle } from "lucide-react"
 import {
   Card,
   CardHeader,
@@ -9,6 +9,14 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -67,8 +75,11 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const { profile, updateProfile, profileCompletion } = useCompanyProfile()
   const { plan, selectPlan, isTrialActive, trialDaysRemaining } = usePlan()
-  const { user } = useAuth()
+  const { user, firebaseUser, deleteAccount } = useAuth()
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // CMS state
   const [cmsIntegration, setCmsIntegration] = useState<CmsIntegration>(() => {
@@ -135,6 +146,22 @@ export function SettingsPage() {
   const handleSaveCms = () => {
     localStorage.setItem(STORAGE_KEYS.CMS_INTEGRATION, JSON.stringify(cmsIntegration))
     toast.success("Publishing integration saved")
+  }
+
+  const isEmailUser = firebaseUser?.providerData.some((p) => p.providerId === "password") ?? false
+
+  const handleDeleteAccount = async () => {
+    try {
+      setDeleteLoading(true)
+      await deleteAccount(isEmailUser ? deletePassword : undefined)
+      toast.success("Account deleted successfully")
+      navigate(ROUTES.LOGIN)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete account"
+      toast.error(msg)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const selectedCmsOption = CMS_OPTIONS.find((o) => o.type === cmsIntegration.type)
@@ -351,6 +378,73 @@ export function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Danger Zone */}
+      <Card className="wonda-card border-destructive/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            Delete Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              This will permanently delete your account, company profile, all articles, and settings. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {isEmailUser && (
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Confirm your password</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || (isEmailUser && !deletePassword)}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete Account"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

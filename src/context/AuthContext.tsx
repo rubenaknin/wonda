@@ -14,12 +14,17 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendEmailVerification,
+  deleteUser,
+  reauthenticateWithPopup,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User,
 } from "firebase/auth"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { extractDomain, isAdminEmail, clearAllLocalData } from "@/lib/auth-helpers"
 import { migrateLocalStorageToFirestore } from "@/lib/migration"
+import { deleteAllUserData } from "@/lib/firestore"
 import type { UserProfile } from "@/types"
 
 interface AuthContextValue {
@@ -31,6 +36,7 @@ interface AuthContextValue {
   signUpWithEmail: (email: string, password: string) => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  deleteAccount: (password?: string) => Promise<void>
   sendVerificationEmail: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -133,6 +139,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFirebaseUser(null)
   }, [])
 
+  const deleteAccount = useCallback(async (password?: string) => {
+    const fbUser = auth.currentUser
+    if (!fbUser) throw new Error("Not signed in")
+
+    // 1. Delete Firestore data while auth is still valid
+    await deleteAllUserData(fbUser.uid)
+
+    // 2. Clear localStorage
+    clearAllLocalData()
+
+    // 3. Delete Firebase Auth user
+    try {
+      await deleteUser(fbUser)
+    } catch (err: unknown) {
+      // Re-auth required
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "auth/requires-recent-login") {
+        const providerIds = fbUser.providerData.map((p) => p.providerId)
+        if (providerIds.includes("google.com")) {
+          await reauthenticateWithPopup(fbUser, googleProvider)
+        } else if (providerIds.includes("password") && password) {
+          const credential = EmailAuthProvider.credential(fbUser.email!, password)
+          await reauthenticateWithCredential(fbUser, credential)
+        } else {
+          throw new Error("Re-authentication required. Please provide your password.")
+        }
+        await deleteUser(fbUser)
+      } else {
+        throw err
+      }
+    }
+
+    // 4. Clear local state
+    setUser(null)
+    setFirebaseUser(null)
+  }, [])
+
   const sendVerificationEmailFn = useCallback(async () => {
     if (auth.currentUser) {
       await sendEmailVerification(auth.currentUser)
@@ -150,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUpWithEmail,
         signInWithEmail,
         signOut,
+        deleteAccount,
         sendVerificationEmail: sendVerificationEmailFn,
         refreshUser,
       }}

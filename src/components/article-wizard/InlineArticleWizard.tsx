@@ -7,7 +7,6 @@ import { useArticleWizard } from "@/hooks/useArticleWizard"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useWebhook } from "@/context/WebhookContext"
-import { useChat } from "@/context/ChatContext"
 import { sendWebhook } from "@/lib/webhook"
 import { WizardProgress } from "./WizardProgress"
 import { KeywordStep } from "./KeywordStep"
@@ -54,7 +53,6 @@ export function InlineArticleWizard({
   const { addArticle, updateArticle, getArticleById, deleteArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { webhookUrls } = useWebhook()
-  const { addAssistantMessage } = useChat()
 
   // Determine if this is editing an article that already has content
   const existingArticle = editArticleId ? getArticleById(editArticleId) : null
@@ -273,9 +271,6 @@ export function InlineArticleWizard({
                 metaTitle,
                 metaDescription,
               })
-              addAssistantMessage(
-                `Content generated for **${title || state.keyword}**! You can now review and edit it in the editor.`
-              )
             }}
             onError={(error) =>
               dispatch({ type: "GENERATION_ERROR", error })

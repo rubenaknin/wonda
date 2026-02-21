@@ -70,6 +70,24 @@ export async function deleteUserArticle(uid: string, articleId: string): Promise
   await deleteDoc(doc(db, "users", uid, "articles", articleId))
 }
 
+// ---- Account Deletion ----
+
+export async function deleteAllUserData(uid: string): Promise<void> {
+  // Delete all articles
+  const articlesRef = collection(db, "users", uid, "articles")
+  const articlesSnap = await getDocs(articlesRef)
+  for (const articleDoc of articlesSnap.docs) {
+    await deleteDoc(articleDoc.ref)
+  }
+
+  // Delete data subcollection docs
+  await deleteDoc(doc(db, "users", uid, "data", "companyProfile")).catch(() => {})
+  await deleteDoc(doc(db, "users", uid, "data", "settings")).catch(() => {})
+
+  // Delete user doc
+  await deleteDoc(doc(db, "users", uid))
+}
+
 // ---- Admin: Read all users ----
 
 export async function readAllUsers(): Promise<UserProfile[]> {

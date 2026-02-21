@@ -65,6 +65,15 @@ function generateMockQuestions(name: string): IntelligenceBankQuestion[] {
   }))
 }
 
+function ensureCompanyName(question: string, name: string): string {
+  if (question.toLowerCase().includes(name.toLowerCase())) return question
+  // Append " for {name}" before the trailing "?"
+  if (question.endsWith("?")) {
+    return question.slice(0, -1) + ` for ${name}?`
+  }
+  return `${question} for ${name}`
+}
+
 function aiFillFromDomainFallback(domain: string): Partial<CompanyProfile> {
   const namePart = domain.split(".")[0] ?? "Company"
   const name = namePart.charAt(0).toUpperCase() + namePart.slice(1)
@@ -116,7 +125,7 @@ export async function aiFillFromDomain(domain: string): Promise<Partial<CompanyP
       })),
       intelligenceBank: (data.intelligenceBank || []).map((text: string) => ({
         id: crypto.randomUUID(),
-        text,
+        text: ensureCompanyName(text, data.name || domain.split(".")[0] || "Company"),
         enabled: true,
       })),
     }

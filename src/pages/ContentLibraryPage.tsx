@@ -71,16 +71,17 @@ export function ContentLibraryPage() {
   // Load sitemap articles on mount
   useEffect(() => {
     if (sitemapLoaded.current) return
-    if (profile.contentPaths.length === 0) return
+    if (profile.contentSitemapUrls.length === 0) return
     const hasSitemapArticles = articles.some((a) => a.source === "sitemap")
     if (hasSitemapArticles) return
 
     sitemapLoaded.current = true
-    const sitemapArticles = parseSitemapUrls(profile.contentPaths)
-    for (const article of sitemapArticles) {
-      addArticle(article)
-    }
-  }, [profile.contentPaths, articles, addArticle])
+    parseSitemapUrls(profile.contentSitemapUrls).then((sitemapArticles) => {
+      for (const article of sitemapArticles) {
+        addArticle(article)
+      }
+    })
+  }, [profile.contentSitemapUrls, articles, addArticle])
 
   const handleEditArticle = (articleId: string, startStep?: WizardStep) => {
     setPanel({ type: "wizard", articleId, startStep })
