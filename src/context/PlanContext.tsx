@@ -1,5 +1,4 @@
-import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from "react"
-import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { createContext, useContext, useCallback, useMemo, useEffect, useState, useRef, type ReactNode } from "react"
 import { STORAGE_KEYS, PLAN_LIMITS } from "@/lib/constants"
 import { readUserDoc, writeUserDoc } from "@/lib/firestore"
 import { calculateTrialDaysRemaining } from "@/lib/auth-helpers"
@@ -9,6 +8,10 @@ const defaultPlan: PricingPlan = {
   tier: "starter",
   articlesUsed: 0,
   billingCycleStart: new Date().toISOString(),
+}
+
+function writeCache(plan: PricingPlan) {
+  try { localStorage.setItem(STORAGE_KEYS.PLAN, JSON.stringify(plan)) } catch {}
 }
 
 interface PlanContextValue {
@@ -31,29 +34,41 @@ export function PlanProvider({ children, uid, trialStartDate, planTier, articles
   planTier?: string
   articlesUsedRemote?: number
 }) {
-  const [plan, setPlan] = useLocalStorage<PricingPlan>(
-    STORAGE_KEYS.PLAN,
-    defaultPlan
-  )
-  const [synced, setSynced] = useState(false)
+  const [plan, setPlanState] = useState<PricingPlan>(defaultPlan)
+  const prevUidRef = useRef<string | undefined>(undefined)
 
-  // Sync plan from Firestore user doc
+  // When uid changes: reset state, then load from Firestore
   useEffect(() => {
-    if (!uid || synced) return
+    if (prevUidRef.current === uid) return
+    prevUidRef.current = uid
+
+    if (!uid) {
+      setPlanState(defaultPlan)
+      writeCache(defaultPlan)
+      return
+    }
+
     readUserDoc(uid)
       .then((userDoc) => {
         if (userDoc) {
           const tier = userDoc.planTier === "trial" ? "starter" : userDoc.planTier as PricingTier
-          setPlan((prev) => ({
-            ...prev,
+          const loaded = {
+            ...defaultPlan,
             tier,
-            articlesUsed: userDoc.articlesUsed ?? prev.articlesUsed,
-          }))
+            articlesUsed: userDoc.articlesUsed ?? 0,
+          }
+          setPlanState(loaded)
+          writeCache(loaded)
+        } else {
+          setPlanState(defaultPlan)
+          writeCache(defaultPlan)
         }
       })
-      .catch(() => {})
-      .finally(() => setSynced(true))
-  }, [uid, synced, setPlan])
+      .catch(() => {
+        setPlanState(defaultPlan)
+        writeCache(defaultPlan)
+      })
+  }, [uid])
 
   const effectivePlanTier = planTier ?? plan.tier
   const effectiveTrialStart = trialStartDate ?? plan.billingCycleStart
@@ -63,23 +78,29 @@ export function PlanProvider({ children, uid, trialStartDate, planTier, articles
 
   const selectPlan = useCallback(
     (tier: PricingTier) => {
-      setPlan((prev) => ({ ...prev, tier }))
+      setPlanState((prev) => {
+        const updated = { ...prev, tier }
+        writeCache(updated)
+        return updated
+      })
       if (uid) {
         writeUserDoc(uid, { planTier: tier }).catch(() => {})
       }
     },
-    [setPlan, uid]
+    [uid]
   )
 
   const incrementUsage = useCallback(() => {
-    setPlan((prev) => {
+    setPlanState((prev) => {
       const newUsed = prev.articlesUsed + 1
+      const updated = { ...prev, articlesUsed: newUsed }
+      writeCache(updated)
       if (uid) {
         writeUserDoc(uid, { articlesUsed: newUsed } as Record<string, number>).catch(() => {})
       }
-      return { ...prev, articlesUsed: newUsed }
+      return updated
     })
-  }, [setPlan, uid])
+  }, [uid])
 
   // Trial: 7 days, 5 articles max
   const effectiveTier = effectivePlanTier === "trial" ? "starter" : effectivePlanTier as PricingTier

@@ -9,7 +9,7 @@ import {
   deleteDoc,
 } from "firebase/firestore"
 import { db } from "./firebase"
-import type { CompanyProfile, Article, WebhookUrls, UserProfile } from "@/types"
+import type { CompanyProfile, Article, WebhookUrls, UserProfile, CmsIntegration, GscData } from "@/types"
 
 // ---- User Profile ----
 
@@ -42,6 +42,28 @@ export async function readWebhookSettings(uid: string): Promise<WebhookUrls | nu
 
 export async function writeWebhookSettings(uid: string, urls: WebhookUrls): Promise<void> {
   await setDoc(doc(db, "users", uid, "data", "settings"), urls)
+}
+
+// ---- CMS Integration ----
+
+export async function readCmsIntegration(uid: string): Promise<CmsIntegration | null> {
+  const snap = await getDoc(doc(db, "users", uid, "data", "cmsIntegration"))
+  return snap.exists() ? (snap.data() as CmsIntegration) : null
+}
+
+export async function writeCmsIntegration(uid: string, cms: CmsIntegration): Promise<void> {
+  await setDoc(doc(db, "users", uid, "data", "cmsIntegration"), cms)
+}
+
+// ---- GSC Data ----
+
+export async function readGscData(uid: string): Promise<GscData | null> {
+  const snap = await getDoc(doc(db, "users", uid, "data", "gscData"))
+  return snap.exists() ? (snap.data() as GscData) : null
+}
+
+export async function writeGscData(uid: string, data: GscData): Promise<void> {
+  await setDoc(doc(db, "users", uid, "data", "gscData"), data)
 }
 
 // ---- Articles ----
@@ -83,6 +105,8 @@ export async function deleteAllUserData(uid: string): Promise<void> {
   // Delete data subcollection docs
   await deleteDoc(doc(db, "users", uid, "data", "companyProfile")).catch(() => {})
   await deleteDoc(doc(db, "users", uid, "data", "settings")).catch(() => {})
+  await deleteDoc(doc(db, "users", uid, "data", "cmsIntegration")).catch(() => {})
+  await deleteDoc(doc(db, "users", uid, "data", "gscData")).catch(() => {})
 
   // Delete user doc
   await deleteDoc(doc(db, "users", uid))

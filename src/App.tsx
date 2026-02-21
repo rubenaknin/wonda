@@ -85,7 +85,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
           articlesUsedRemote={user?.articlesUsed}
         >
           <ArticlesProvider uid={uid}>
-            <ChatProvider>
+            <ChatProvider uid={uid}>
               <TooltipProvider>
                 {children}
               </TooltipProvider>

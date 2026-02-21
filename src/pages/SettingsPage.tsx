@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Check, Lock, Globe, Unplug, Loader2, Building2, ArrowRight, AlertTriangle } from "lucide-react"
@@ -24,8 +24,9 @@ import { Badge } from "@/components/ui/badge"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
 import { useAuth } from "@/context/AuthContext"
-import { PLAN_DETAILS, STORAGE_KEYS, ROUTES } from "@/lib/constants"
+import { PLAN_DETAILS, ROUTES } from "@/lib/constants"
 import { createCheckoutSession } from "@/lib/stripe-client"
+import { readCmsIntegration, writeCmsIntegration, writeGscData } from "@/lib/firestore"
 import type { PricingTier, CmsType, CmsIntegration, GscData } from "@/types"
 
 const CMS_OPTIONS: { type: CmsType; label: string; enterpriseOnly?: boolean; fields: { key: string; label: string; placeholder: string }[] }[] = [
@@ -81,15 +82,19 @@ export function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("")
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // CMS state
-  const [cmsIntegration, setCmsIntegration] = useState<CmsIntegration>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.CMS_INTEGRATION)
-      return raw ? JSON.parse(raw) : { type: "framer", enabled: false, config: {} }
-    } catch {
-      return { type: "framer", enabled: false, config: {} }
-    }
+  // CMS state — loaded from Firestore
+  const [cmsIntegration, setCmsIntegration] = useState<CmsIntegration>({
+    type: "framer",
+    enabled: false,
+    config: {},
   })
+
+  useEffect(() => {
+    if (!user?.uid) return
+    readCmsIntegration(user.uid).then((data) => {
+      if (data) setCmsIntegration(data)
+    }).catch(() => {})
+  }, [user?.uid])
 
   const handleSelectPlan = async (tier: PricingTier) => {
     if (tier === "enterprise") {
@@ -117,13 +122,14 @@ export function SettingsPage() {
   // GSC handlers
   const handleConnectGsc = () => {
     updateProfile({ gscConnected: true, gscPropertyUrl: profile.websiteUrl || "https://example.com" })
-    localStorage.setItem(STORAGE_KEYS.GSC_DATA, JSON.stringify(DEFAULT_GSC_DATA))
+    if (user?.uid) {
+      writeGscData(user.uid, DEFAULT_GSC_DATA).catch(() => {})
+    }
     toast.success("Google Search Console connected")
   }
 
   const handleDisconnectGsc = () => {
     updateProfile({ gscConnected: false, gscPropertyUrl: "" })
-    localStorage.removeItem(STORAGE_KEYS.GSC_DATA)
     toast.success("Google Search Console disconnected")
   }
 
@@ -144,7 +150,9 @@ export function SettingsPage() {
   }
 
   const handleSaveCms = () => {
-    localStorage.setItem(STORAGE_KEYS.CMS_INTEGRATION, JSON.stringify(cmsIntegration))
+    if (user?.uid) {
+      writeCmsIntegration(user.uid, cmsIntegration).catch(() => {})
+    }
     toast.success("Publishing integration saved")
   }
 
@@ -154,12 +162,11 @@ export function SettingsPage() {
     try {
       setDeleteLoading(true)
       await deleteAccount(isEmailUser ? deletePassword : undefined)
-      toast.success("Account deleted successfully")
-      navigate(ROUTES.LOGIN)
+      // Hard reload to guarantee all React state and localStorage are wiped
+      window.location.href = ROUTES.LOGIN
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to delete account"
       toast.error(msg)
-    } finally {
       setDeleteLoading(false)
     }
   }

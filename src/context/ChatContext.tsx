@@ -7,7 +7,6 @@ import {
   useRef,
   type ReactNode,
 } from "react"
-import { useLocalStorage } from "@/hooks/useLocalStorage"
 import { STORAGE_KEYS } from "@/lib/constants"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
@@ -104,14 +103,13 @@ const ChatContext = createContext<ChatContextValue | null>(null)
 // ============================================================
 // Provider
 // ============================================================
-export function ChatProvider({ children }: { children: ReactNode }) {
-  const [storedMessages, setStoredMessages] = useLocalStorage<ChatMessage[]>(
-    STORAGE_KEYS.CHAT_HISTORY,
-    []
-  )
+function writeChatCache(messages: ChatMessage[]) {
+  try { localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(messages)) } catch {}
+}
 
+export function ChatProvider({ children, uid }: { children: ReactNode; uid?: string }) {
   const initialState: ChatState = {
-    messages: storedMessages,
+    messages: [],
     isProcessing: false,
     sidebarOpen: false,
     floatingOpen: false,
@@ -122,6 +120,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const commandBusRef = useRef(createCommandBus())
   const articlesCtx = useArticles()
   const profileCtx = useCompanyProfile()
+  const prevUidRef = useRef<string | undefined>(undefined)
 
   // Use refs to avoid stale closures in async callbacks
   const pendingRef = useRef(state.pendingConfirmation)
@@ -133,10 +132,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const profileRef = useRef(profileCtx)
   profileRef.current = profileCtx
 
+  // When uid changes: reset or restore from cache
+  useEffect(() => {
+    if (prevUidRef.current === uid) return
+    prevUidRef.current = uid
+
+    if (!uid) {
+      dispatch({ type: "CLEAR_MESSAGES" })
+      writeChatCache([])
+      return
+    }
+
+    // Restore from localStorage cache for this session
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY)
+      const cached = raw ? JSON.parse(raw) as ChatMessage[] : []
+      dispatch({ type: "SET_MESSAGES", messages: cached })
+    } catch {
+      dispatch({ type: "SET_MESSAGES", messages: [] })
+    }
+  }, [uid])
+
   // Sync messages to localStorage
   useEffect(() => {
-    setStoredMessages(state.messages)
-  }, [state.messages, setStoredMessages])
+    writeChatCache(state.messages)
+  }, [state.messages])
 
   const emitCommand = useCallback(
     (cmd: { type: string; payload: Record<string, string> } | undefined) => {

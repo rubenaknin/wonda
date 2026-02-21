@@ -1,5 +1,4 @@
-import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from "react"
-import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { createContext, useContext, useCallback, useMemo, useEffect, useState, useRef, type ReactNode } from "react"
 import { STORAGE_KEYS } from "@/lib/constants"
 import { readCompanyProfile, writeCompanyProfile } from "@/lib/firestore"
 import type { CompanyProfile } from "@/types"
@@ -41,6 +40,10 @@ function computeProfileCompletion(profile: CompanyProfile): number {
   return Math.round((filled / checks.length) * 100)
 }
 
+function writeCache(profile: CompanyProfile) {
+  try { localStorage.setItem(STORAGE_KEYS.COMPANY_PROFILE, JSON.stringify(profile)) } catch {}
+}
+
 interface CompanyProfileContextValue {
   profile: CompanyProfile
   setProfile: (profile: CompanyProfile) => void
@@ -53,54 +56,58 @@ interface CompanyProfileContextValue {
 const CompanyProfileContext = createContext<CompanyProfileContextValue | null>(null)
 
 export function CompanyProfileProvider({ children, uid }: { children: ReactNode; uid?: string }) {
-  const [profile, setProfile] = useLocalStorage<CompanyProfile>(
-    STORAGE_KEYS.COMPANY_PROFILE,
-    emptyProfile
-  )
+  const [profile, setProfileState] = useState<CompanyProfile>(emptyProfile)
   const [loading, setLoading] = useState(false)
-  const [firestoreLoaded, setFirestoreLoaded] = useState(false)
+  const prevUidRef = useRef<string | undefined>(undefined)
 
-  // Load from Firestore on mount if uid exists
+  // When uid changes: reset state, then load from Firestore
   useEffect(() => {
-    if (!uid || firestoreLoaded) return
+    if (prevUidRef.current === uid) return
+    prevUidRef.current = uid
+
+    if (!uid) {
+      setProfileState(emptyProfile)
+      writeCache(emptyProfile)
+      return
+    }
+
     setLoading(true)
     readCompanyProfile(uid)
       .then((data) => {
-        if (data) {
-          setProfile({ ...emptyProfile, ...data })
-        }
+        const loaded = data ? { ...emptyProfile, ...data } : emptyProfile
+        setProfileState(loaded)
+        writeCache(loaded)
       })
       .catch(() => {
-        // Fallback to localStorage (already loaded)
+        setProfileState(emptyProfile)
+        writeCache(emptyProfile)
       })
-      .finally(() => {
-        setLoading(false)
-        setFirestoreLoaded(true)
-      })
-  }, [uid, firestoreLoaded, setProfile])
+      .finally(() => setLoading(false))
+  }, [uid])
 
   const updateProfile = useCallback(
     (partial: Partial<CompanyProfile>) => {
-      setProfile((prev) => {
+      setProfileState((prev) => {
         const updated = { ...prev, ...partial }
-        // Async write to Firestore (fire and forget)
+        writeCache(updated)
         if (uid) {
           writeCompanyProfile(uid, updated).catch(() => {})
         }
         return updated
       })
     },
-    [setProfile, uid]
+    [uid]
   )
 
-  const setProfileWithSync = useCallback(
+  const setProfile = useCallback(
     (newProfile: CompanyProfile) => {
-      setProfile(newProfile)
+      setProfileState(newProfile)
+      writeCache(newProfile)
       if (uid) {
         writeCompanyProfile(uid, newProfile).catch(() => {})
       }
     },
-    [setProfile, uid]
+    [uid]
   )
 
   const isOnboarded = Boolean(profile.name && profile.valueProp)
@@ -108,7 +115,7 @@ export function CompanyProfileProvider({ children, uid }: { children: ReactNode;
 
   return (
     <CompanyProfileContext.Provider
-      value={{ profile, setProfile: setProfileWithSync, updateProfile, isOnboarded, profileCompletion, loading }}
+      value={{ profile, setProfile, updateProfile, isOnboarded, profileCompletion, loading }}
     >
       {children}
     </CompanyProfileContext.Provider>

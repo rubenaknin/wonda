@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import {
@@ -22,7 +23,8 @@ import { useWebhook } from "@/context/WebhookContext"
 import { usePlan } from "@/context/PlanContext"
 import { useAuth } from "@/context/AuthContext"
 import { sendWebhook } from "@/lib/webhook"
-import { ROUTES, STORAGE_KEYS } from "@/lib/constants"
+import { ROUTES } from "@/lib/constants"
+import { readGscData, writeGscData } from "@/lib/firestore"
 import type { GscData } from "@/types"
 
 function formatCompact(n: number): string {
@@ -42,14 +44,14 @@ export function DashboardPage() {
   const existingCount = articles.filter((a) => a.origin !== "wonda").length
   const wondaCount = articles.filter((a) => a.origin === "wonda").length
 
-  // Read GSC data from localStorage
-  let gscData: GscData | null = null
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.GSC_DATA)
-    if (raw) gscData = JSON.parse(raw)
-  } catch {
-    // ignore
-  }
+  const [gscData, setGscData] = useState<GscData | null>(null)
+
+  useEffect(() => {
+    if (!user?.uid || !profile.gscConnected) return
+    readGscData(user.uid).then((data) => {
+      if (data) setGscData(data)
+    }).catch(() => {})
+  }, [user?.uid, profile.gscConnected])
 
   const handleRefreshContent = async () => {
     await sendWebhook(webhookUrls.generateArticle, "refresh_content", {})
@@ -67,7 +69,10 @@ export function DashboardPage() {
       blogImpressions: 156000,
       lastUpdated: new Date().toISOString(),
     }
-    localStorage.setItem(STORAGE_KEYS.GSC_DATA, JSON.stringify(defaultData))
+    if (user?.uid) {
+      writeGscData(user.uid, defaultData).catch(() => {})
+    }
+    setGscData(defaultData)
     toast.success("Google Search Console connected")
   }
 

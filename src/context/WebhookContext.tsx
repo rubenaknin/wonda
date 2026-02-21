@@ -1,5 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useState, type ReactNode } from "react"
-import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { createContext, useContext, useCallback, useEffect, useState, useRef, type ReactNode } from "react"
 import { STORAGE_KEYS } from "@/lib/constants"
 import { readWebhookSettings, writeWebhookSettings } from "@/lib/firestore"
 import type { WebhookUrls } from "@/types"
@@ -13,6 +12,10 @@ const emptyUrls: WebhookUrls = {
   researchKeywords: "",
 }
 
+function writeCache(urls: WebhookUrls) {
+  try { localStorage.setItem(STORAGE_KEYS.WEBHOOK_URLS, JSON.stringify(urls)) } catch {}
+}
+
 interface WebhookContextValue {
   webhookUrls: WebhookUrls
   setWebhookUrls: (urls: WebhookUrls) => void
@@ -23,52 +26,66 @@ interface WebhookContextValue {
 const WebhookContext = createContext<WebhookContextValue | null>(null)
 
 export function WebhookProvider({ children, uid }: { children: ReactNode; uid?: string }) {
-  const [webhookUrls, setWebhookUrls] = useLocalStorage<WebhookUrls>(
-    STORAGE_KEYS.WEBHOOK_URLS,
-    emptyUrls
-  )
-  const [firestoreLoaded, setFirestoreLoaded] = useState(false)
+  const [webhookUrls, setWebhookUrlsState] = useState<WebhookUrls>(emptyUrls)
+  const prevUidRef = useRef<string | undefined>(undefined)
 
+  // When uid changes: reset state, then load from Firestore
   useEffect(() => {
-    if (!uid || firestoreLoaded) return
+    if (prevUidRef.current === uid) return
+    prevUidRef.current = uid
+
+    if (!uid) {
+      setWebhookUrlsState(emptyUrls)
+      writeCache(emptyUrls)
+      return
+    }
+
     readWebhookSettings(uid)
       .then((data) => {
         if (data) {
-          setWebhookUrls(data)
+          setWebhookUrlsState(data)
+          writeCache(data)
+        } else {
+          setWebhookUrlsState(emptyUrls)
+          writeCache(emptyUrls)
         }
       })
-      .catch(() => {})
-      .finally(() => setFirestoreLoaded(true))
-  }, [uid, firestoreLoaded, setWebhookUrls])
+      .catch(() => {
+        setWebhookUrlsState(emptyUrls)
+        writeCache(emptyUrls)
+      })
+  }, [uid])
 
   const updateWebhookUrl = useCallback(
     (key: keyof WebhookUrls, url: string) => {
-      setWebhookUrls((prev) => {
+      setWebhookUrlsState((prev) => {
         const updated = { ...prev, [key]: url }
+        writeCache(updated)
         if (uid) {
           writeWebhookSettings(uid, updated).catch(() => {})
         }
         return updated
       })
     },
-    [setWebhookUrls, uid]
+    [uid]
   )
 
-  const setWebhookUrlsWithSync = useCallback(
+  const setWebhookUrls = useCallback(
     (urls: WebhookUrls) => {
-      setWebhookUrls(urls)
+      setWebhookUrlsState(urls)
+      writeCache(urls)
       if (uid) {
         writeWebhookSettings(uid, urls).catch(() => {})
       }
     },
-    [setWebhookUrls, uid]
+    [uid]
   )
 
   const hasAnyWebhook = Object.values(webhookUrls).some((u) => u.trim() !== "")
 
   return (
     <WebhookContext.Provider
-      value={{ webhookUrls, setWebhookUrls: setWebhookUrlsWithSync, updateWebhookUrl, hasAnyWebhook }}
+      value={{ webhookUrls, setWebhookUrls, updateWebhookUrl, hasAnyWebhook }}
     >
       {children}
     </WebhookContext.Provider>

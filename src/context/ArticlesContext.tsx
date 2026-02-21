@@ -1,5 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useState, type ReactNode } from "react"
-import { useLocalStorage } from "@/hooks/useLocalStorage"
+import { createContext, useContext, useCallback, useEffect, useState, useRef, type ReactNode } from "react"
 import { STORAGE_KEYS } from "@/lib/constants"
 import { readUserArticles, addUserArticle, updateUserArticle, deleteUserArticle } from "@/lib/firestore"
 import type { Article } from "@/types"
@@ -16,61 +15,83 @@ interface ArticlesContextValue {
 
 const ArticlesContext = createContext<ArticlesContextValue | null>(null)
 
-export function ArticlesProvider({ children, uid }: { children: ReactNode; uid?: string }) {
-  const [articles, setArticles] = useLocalStorage<Article[]>(
-    STORAGE_KEYS.ARTICLES,
-    []
-  )
-  const [loading, setLoading] = useState(false)
-  const [firestoreLoaded, setFirestoreLoaded] = useState(false)
+function writeCache(articles: Article[]) {
+  try { localStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(articles)) } catch {}
+}
 
+export function ArticlesProvider({ children, uid }: { children: ReactNode; uid?: string }) {
+  const [articles, setArticles] = useState<Article[]>([])
+  const [loading, setLoading] = useState(false)
+  const prevUidRef = useRef<string | undefined>(undefined)
+
+  // When uid changes: reset state, then load from Firestore
   useEffect(() => {
-    if (!uid || firestoreLoaded) return
+    // Skip the initial mount if uid hasn't actually changed
+    if (prevUidRef.current === uid) return
+    prevUidRef.current = uid
+
+    if (!uid) {
+      // Signed out — clear everything
+      setArticles([])
+      writeCache([])
+      return
+    }
+
+    // New user signed in — load from Firestore
     setLoading(true)
     readUserArticles(uid)
       .then((data) => {
-        if (data.length > 0) {
-          setArticles(data)
-        }
+        setArticles(data)
+        writeCache(data)
       })
-      .catch(() => {})
-      .finally(() => {
-        setLoading(false)
-        setFirestoreLoaded(true)
+      .catch(() => {
+        setArticles([])
+        writeCache([])
       })
-  }, [uid, firestoreLoaded, setArticles])
+      .finally(() => setLoading(false))
+  }, [uid])
 
   const addArticle = useCallback(
     (article: Article) => {
-      setArticles((prev) => [...prev, article])
+      setArticles((prev) => {
+        const next = [...prev, article]
+        writeCache(next)
+        return next
+      })
       if (uid) {
         addUserArticle(uid, article).catch(() => {})
       }
     },
-    [setArticles, uid]
+    [uid]
   )
 
   const updateArticleFn = useCallback(
     (id: string, updates: Partial<Article>) => {
       const updatesWithTimestamp = { ...updates, updatedAt: new Date().toISOString() }
-      setArticles((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, ...updatesWithTimestamp } : a))
-      )
+      setArticles((prev) => {
+        const next = prev.map((a) => (a.id === id ? { ...a, ...updatesWithTimestamp } : a))
+        writeCache(next)
+        return next
+      })
       if (uid) {
         updateUserArticle(uid, id, updatesWithTimestamp).catch(() => {})
       }
     },
-    [setArticles, uid]
+    [uid]
   )
 
   const deleteArticleFn = useCallback(
     (id: string) => {
-      setArticles((prev) => prev.filter((a) => a.id !== id))
+      setArticles((prev) => {
+        const next = prev.filter((a) => a.id !== id)
+        writeCache(next)
+        return next
+      })
       if (uid) {
         deleteUserArticle(uid, id).catch(() => {})
       }
     },
-    [setArticles, uid]
+    [uid]
   )
 
   const getArticleById = useCallback(
