@@ -38,6 +38,7 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
   published: "bg-[#10B981]/10 text-[#10B981]",
   generating: "bg-[#F59E0B]/10 text-[#F59E0B] animate-pulse",
   error: "bg-red-50 text-red-500",
+  archived: "bg-slate-100 text-slate-400",
 }
 
 interface ArticleTableProps {

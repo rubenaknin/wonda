@@ -94,7 +94,7 @@ function handleTriggerGeneration(
   return {
     success: true,
     message: `Starting content generation for "${article.title}"...`,
-    data: { articleId: article.id },
+    data: { articleId: article.id, article },
   }
 }
 
@@ -260,6 +260,6 @@ function handlePreviewArticle(
   return {
     success: true,
     message: `Opening preview for "${article.title}"...`,
-    data: { articleId: article.id },
+    data: { articleId: article.id, article },
   }
 }

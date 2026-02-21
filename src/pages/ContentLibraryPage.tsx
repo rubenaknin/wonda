@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { usePlan } from "@/context/PlanContext"
+import { useWebhook } from "@/context/WebhookContext"
+import { sendWebhook } from "@/lib/webhook"
 import { SpreadsheetTable } from "@/components/content-library/SpreadsheetTable"
 import { InlineArticleWizard } from "@/components/article-wizard/InlineArticleWizard"
 import { UpgradeModal } from "@/components/plan/UpgradeModal"
@@ -24,6 +28,9 @@ export function ContentLibraryPage() {
   const { profile } = useCompanyProfile()
   const { canGenerate } = usePlan()
   const { commandBus, setSidebarOpen } = useChat()
+  const { webhookUrls } = useWebhook()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [panel, setPanel] = useState<PanelMode>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [previewArticleId, setPreviewArticleId] = useState<string | null>(null)
@@ -33,6 +40,16 @@ export function ContentLibraryPage() {
   useEffect(() => {
     setSidebarOpen(false)
   }, [setSidebarOpen])
+
+  // Handle commands passed via navigation state (from AppLayout global handler)
+  useEffect(() => {
+    const cmd = (location.state as { chatCommand?: ChatCommand })?.chatCommand
+    if (cmd) {
+      handleChatCommand(cmd)
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to chat command bus
   const handleChatCommand = useCallback(
@@ -105,6 +122,42 @@ export function ContentLibraryPage() {
     setPreviewArticleId(articleId)
   }
 
+  const handleBulkGenerate = useCallback(
+    (articleIds: string[]) => {
+      for (const id of articleIds) {
+        const article = getArticleById(id)
+        if (article) {
+          updateArticle(id, { status: "generating" })
+          sendWebhook(webhookUrls.generateArticle, "generate_article", {
+            articleId: id,
+            keyword: article.keyword,
+            slug: article.slug || article.keyword.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+            category: article.category || "blog",
+          })
+        }
+      }
+      toast.success(`Generation started for ${articleIds.length} article${articleIds.length !== 1 ? "s" : ""}`)
+    },
+    [getArticleById, updateArticle, webhookUrls.generateArticle]
+  )
+
+  const handleBulkRefresh = useCallback(
+    (articleIds: string[]) => {
+      for (const id of articleIds) {
+        const article = getArticleById(id)
+        if (article) {
+          updateArticle(id, { status: "generating" })
+          sendWebhook(webhookUrls.generateArticle, "refresh_aeo", {
+            articleId: id,
+            keyword: article.keyword,
+          })
+        }
+      }
+      toast.success(`Refresh started for ${articleIds.length} article${articleIds.length !== 1 ? "s" : ""}`)
+    },
+    [getArticleById, updateArticle, webhookUrls.generateArticle]
+  )
+
   const handleClosePanel = () => {
     setPanel(null)
   }
@@ -152,6 +205,8 @@ export function ContentLibraryPage() {
           onOpenUpload={() => setPanel({ type: "csv" })}
           onGenerateArticle={handleGenerateArticle}
           onPreviewArticle={handlePreviewArticle}
+          onBulkGenerate={handleBulkGenerate}
+          onBulkRefresh={handleBulkRefresh}
         />
       )}
     </div>

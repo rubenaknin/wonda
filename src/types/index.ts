@@ -110,6 +110,7 @@ export type ArticleStatus =
   | "published"
   | "generating"
   | "error"
+  | "archived"
 
 export type ArticleCategory =
   | "blog"

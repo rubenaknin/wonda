@@ -63,6 +63,8 @@ interface SpreadsheetTableProps {
   onOpenUpload: () => void
   onGenerateArticle: (articleId: string) => void
   onPreviewArticle: (articleId: string) => void
+  onBulkGenerate?: (articleIds: string[]) => void
+  onBulkRefresh?: (articleIds: string[]) => void
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -72,6 +74,7 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
   published: "bg-[#10B981]/10 text-[#10B981]",
   generating: "bg-[#F59E0B]/10 text-[#F59E0B] animate-pulse",
   error: "bg-red-50 text-red-500",
+  archived: "bg-slate-100 text-slate-400",
 }
 
 const VIEWS_KEY = "wonda_table_views"
@@ -466,6 +469,8 @@ export function SpreadsheetTable({
   onOpenUpload,
   onGenerateArticle,
   onPreviewArticle,
+  onBulkGenerate,
+  onBulkRefresh,
 }: SpreadsheetTableProps) {
   const { addArticle, updateArticle, deleteArticle } = useArticles()
 
@@ -554,9 +559,15 @@ export function SpreadsheetTable({
   // ── Filter logic ───────────────────────────
   const filteredByAdvanced = useMemo(() => {
     if (filterGroup.rules.length === 0) return articles
-    return articles.filter((a) =>
-      matchesFilterGroup(a as unknown as Record<string, unknown>, filterGroup)
-    )
+    return articles.filter((a) => {
+      // Map raw data values to display values so filters match what users see
+      const displayRecord: Record<string, unknown> = { ...a }
+      displayRecord.origin = a.origin === "wonda" ? "Wonda" : "Legacy"
+      if (a.origin !== "wonda" || a.status === "published") {
+        displayRecord.status = "Live"
+      }
+      return matchesFilterGroup(displayRecord, filterGroup)
+    })
   }, [articles, filterGroup])
 
   // ── Inline cell update handler ─────────────
@@ -765,7 +776,7 @@ export function SpreadsheetTable({
           return (
             <div onClick={(e) => e.stopPropagation()}>
               <select
-                className="text-xs bg-transparent border-none outline-none cursor-pointer text-muted-foreground hover:text-foreground"
+                className="text-xs bg-transparent border-none outline-none cursor-pointer text-muted-foreground hover:text-foreground w-full max-w-[120px] truncate"
                 value={value}
                 onChange={(e) => {
                   handleInlineCellUpdate(article.id, "rankingType", e.target.value)
@@ -1062,12 +1073,25 @@ export function SpreadsheetTable({
   const handleBulkDelete = useCallback(() => {
     const selectedRows = table.getSelectedRowModel().rows
     if (selectedRows.length === 0) return
-    for (const row of selectedRows) {
+    const liveRows = selectedRows.filter(
+      (r) => r.original.status === "published" || r.original.origin !== "wonda"
+    )
+    const deletableRows = selectedRows.filter(
+      (r) => r.original.status !== "published" && r.original.origin === "wonda"
+    )
+    // Archive live articles instead of deleting
+    for (const row of liveRows) {
+      updateArticle(row.original.id, { status: "archived" })
+    }
+    for (const row of deletableRows) {
       deleteArticle(row.original.id)
     }
     setRowSelection({})
-    toast.success(`${selectedRows.length} article${selectedRows.length !== 1 ? "s" : ""} deleted`)
-  }, [table, deleteArticle])
+    const parts: string[] = []
+    if (deletableRows.length > 0) parts.push(`${deletableRows.length} deleted`)
+    if (liveRows.length > 0) parts.push(`${liveRows.length} archived (live articles can't be deleted)`)
+    toast.success(parts.join(", "))
+  }, [table, deleteArticle, updateArticle])
 
   const handleToggleColumn = useCallback(
     (colId: string) => {
@@ -1219,6 +1243,51 @@ export function SpreadsheetTable({
           <span className="text-xs font-medium">
             {selectedRowCount} article{selectedRowCount !== 1 ? "s" : ""} selected
           </span>
+          {onBulkGenerate && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 text-[#0061FF] border-[#0061FF]/30 hover:bg-[#0061FF]/10"
+              onClick={() => {
+                const ids = table.getSelectedRowModel().rows
+                  .filter((r) => {
+                    const a = r.original
+                    return a.origin === "wonda" && (!a.bodyHtml || a.status === "pending") && a.keyword?.trim()
+                  })
+                  .map((r) => r.original.id)
+                if (ids.length === 0) {
+                  toast.error("No eligible articles to generate (need keyword, no existing content)")
+                  return
+                }
+                onBulkGenerate(ids)
+                setRowSelection({})
+              }}
+            >
+              <Play className="h-3 w-3" />
+              Generate Selected
+            </Button>
+          )}
+          {onBulkRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 text-[#F59E0B] border-[#F59E0B]/30 hover:bg-[#F59E0B]/10"
+              onClick={() => {
+                const ids = table.getSelectedRowModel().rows
+                  .filter((r) => Boolean(r.original.bodyHtml))
+                  .map((r) => r.original.id)
+                if (ids.length === 0) {
+                  toast.error("No articles with content to refresh")
+                  return
+                }
+                onBulkRefresh(ids)
+                setRowSelection({})
+              }}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh Selected
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

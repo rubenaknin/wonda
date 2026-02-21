@@ -89,6 +89,7 @@ interface ChatContextValue {
   floatingOpen: boolean
   pendingConfirmation: PendingConfirmation | null
   sendMessage: (text: string) => void
+  addAssistantMessage: (text: string) => void
   handleButtonClick: (action: string, payload?: Record<string, string>) => void
   clearMessages: () => void
   toggleSidebar: () => void
@@ -243,6 +244,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [emitCommand]
   )
 
+  const addAssistantMessage = useCallback((text: string) => {
+    const msg: ChatMessage = {
+      id: `msg_sys_${Date.now()}`,
+      role: "assistant",
+      text,
+      timestamp: Date.now(),
+    }
+    dispatch({ type: "ADD_MESSAGE", message: msg })
+  }, [])
+
   const clearMessages = useCallback(() => {
     dispatch({ type: "CLEAR_MESSAGES" })
   }, [])
@@ -261,6 +272,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         floatingOpen: state.floatingOpen,
         pendingConfirmation: state.pendingConfirmation,
         sendMessage,
+        addAssistantMessage,
         handleButtonClick,
         clearMessages,
         toggleSidebar,

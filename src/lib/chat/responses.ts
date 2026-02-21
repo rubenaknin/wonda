@@ -62,8 +62,10 @@ function buildGenerateResponse(result: ActionResult): Omit<ChatMessage, "id" | "
 function buildTriggerGenerationResponse(result: ActionResult): Omit<ChatMessage, "id" | "timestamp"> {
   const buttons: ChatActionButton[] = []
   if (result.data?.articleId) {
+    const article = result.data.article
+    const hasContent = article?.bodyHtml && article.bodyHtml.length > 0
     buttons.push({
-      label: "Generate Content",
+      label: hasContent ? "Refresh Content" : "Generate Content",
       action: "generate_content",
       payload: { articleId: result.data.articleId },
     })
@@ -103,9 +105,19 @@ function buildPreviewResponse(result: ActionResult): Omit<ChatMessage, "id" | "t
   const buttons: ChatActionButton[] = []
   if (result.data?.articleId) {
     buttons.push(
-      { label: "Preview", action: "preview", payload: { articleId: result.data.articleId } },
-      { label: "Generate Content", action: "generate_content", payload: { articleId: result.data.articleId } }
+      { label: "Preview", action: "preview", payload: { articleId: result.data.articleId } }
     )
+    const article = result.data.article
+    const hasContent = article?.bodyHtml && article.bodyHtml.length > 0
+    if (!hasContent) {
+      buttons.push(
+        { label: "Generate Content", action: "generate_content", payload: { articleId: result.data.articleId } }
+      )
+    } else {
+      buttons.push(
+        { label: "Edit", action: "edit", payload: { articleId: result.data.articleId } }
+      )
+    }
   }
   return { role: "assistant", text: result.message, buttons }
 }

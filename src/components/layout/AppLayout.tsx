@@ -10,11 +10,14 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { commandBus } = useChat()
 
-  // Global navigate command handler
+  // Global command handler: navigate + route to content library for article commands
   useEffect(() => {
     return commandBus.subscribe((command) => {
       if (command.type === "navigate" && command.payload.path) {
         navigate(command.payload.path)
+      } else if (command.type === "open_article_wizard" || command.type === "open_article_preview") {
+        // Navigate to content library with the command in state so it can handle it on mount
+        navigate("/content-library", { state: { chatCommand: command } })
       }
     })
   }, [commandBus, navigate])

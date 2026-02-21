@@ -1,12 +1,13 @@
 import { useEffect, useMemo } from "react"
 import { toast } from "sonner"
-import { X, Trash2, RefreshCw } from "lucide-react"
+import { X, Trash2, RefreshCw, Archive } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useArticleWizard } from "@/hooks/useArticleWizard"
 import { useArticles } from "@/context/ArticlesContext"
 import { useCompanyProfile } from "@/context/CompanyProfileContext"
 import { useWebhook } from "@/context/WebhookContext"
+import { useChat } from "@/context/ChatContext"
 import { sendWebhook } from "@/lib/webhook"
 import { WizardProgress } from "./WizardProgress"
 import { KeywordStep } from "./KeywordStep"
@@ -53,10 +54,12 @@ export function InlineArticleWizard({
   const { addArticle, updateArticle, getArticleById, deleteArticle } = useArticles()
   const { profile } = useCompanyProfile()
   const { webhookUrls } = useWebhook()
+  const { addAssistantMessage } = useChat()
 
   // Determine if this is editing an article that already has content
   const existingArticle = editArticleId ? getArticleById(editArticleId) : null
   const hasExistingContent = Boolean(existingArticle?.bodyHtml)
+  const isLiveArticle = existingArticle?.status === "published" || (existingArticle?.origin !== "wonda" && existingArticle?.origin !== undefined)
 
   // Steps to show based on context
   const visibleSteps = useMemo<WizardStepType[]>(() => {
@@ -177,9 +180,15 @@ export function InlineArticleWizard({
   }
 
   const handleDelete = () => {
-    if (!editArticleId) return
-    deleteArticle(editArticleId)
-    toast.success("Article deleted")
+    if (!editArticleId || !existingArticle) return
+    const isLive = existingArticle.status === "published" || existingArticle.origin !== "wonda"
+    if (isLive) {
+      updateArticle(editArticleId, { status: "archived" })
+      toast.success("Article archived (live articles can't be deleted)")
+    } else {
+      deleteArticle(editArticleId)
+      toast.success("Article deleted")
+    }
     onClose()
   }
 
@@ -254,7 +263,7 @@ export function InlineArticleWizard({
                 status: s,
               })
             }
-            onComplete={(bodyHtml, faqHtml, faqItems, title) =>
+            onComplete={(bodyHtml, faqHtml, faqItems, title) => {
               dispatch({
                 type: "GENERATION_COMPLETE",
                 bodyHtml,
@@ -262,7 +271,10 @@ export function InlineArticleWizard({
                 faqItems,
                 title,
               })
-            }
+              addAssistantMessage(
+                `Content generated for **${title || state.keyword}**! You can now review and edit it in the editor.`
+              )
+            }}
             onError={(error) =>
               dispatch({ type: "GENERATION_ERROR", error })
             }
@@ -355,9 +367,9 @@ export function InlineArticleWizard({
                 size="sm"
                 className="h-8 text-xs gap-1 text-muted-foreground hover:text-destructive"
                 onClick={handleDelete}
-                title="Delete article"
+                title={isLiveArticle ? "Archive article" : "Delete article"}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                {isLiveArticle ? <Archive className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
               </Button>
             </>
           )}
