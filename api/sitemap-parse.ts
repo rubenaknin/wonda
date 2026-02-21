@@ -16,6 +16,12 @@ const CONTENT_PATH_PATTERNS = [
   "/updates/",
 ]
 
+const FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/xml, text/xml, text/html",
+}
+
 function slugToTitle(slug: string): string {
   return slug
     .replace(/\.\w+$/, "") // strip file extensions
@@ -58,6 +64,28 @@ function extractArticles(urls: string[]) {
   return articles
 }
 
+async function fetchXml(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  const response = await fetch(url, {
+    signal: controller.signal,
+    headers: FETCH_HEADERS,
+  })
+
+  clearTimeout(timeout)
+
+  if (!response.ok) {
+    throw new Error(`Sitemap returned ${response.status}`)
+  }
+
+  return response.text()
+}
+
+function extractLocs(xml: string): string[] {
+  return [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi)].map((m) => m[1].trim())
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" })
@@ -69,28 +97,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
+    const xml = await fetchXml(sitemapUrl)
+    const locs = extractLocs(xml)
 
-    const response = await fetch(sitemapUrl, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; WondaBot/1.0)",
-        Accept: "application/xml, text/xml",
-      },
-    })
+    // Check if this is a sitemap index (contains <sitemap> tags)
+    const isSitemapIndex = /<sitemap>/i.test(xml)
 
-    clearTimeout(timeout)
+    let allUrls: string[] = []
 
-    if (!response.ok) {
-      return res.status(502).json({ error: `Sitemap returned ${response.status}` })
+    if (isSitemapIndex) {
+      // Fetch each child sitemap in parallel
+      const childResults = await Promise.allSettled(
+        locs.map((childUrl) => fetchXml(childUrl).then(extractLocs))
+      )
+      for (const result of childResults) {
+        if (result.status === "fulfilled") {
+          allUrls.push(...result.value)
+        }
+      }
+    } else {
+      allUrls = locs
     }
-
-    const xml = await response.text()
-
-    // Extract all <loc> URLs from the XML
-    const locMatches = [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi)]
-    const allUrls = locMatches.map((m) => m[1].trim())
 
     const articles = extractArticles(allUrls)
 
@@ -100,6 +127,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : "Sitemap fetch failed"
-    return res.status(500).json({ error: errMsg })
+    return res.status(502).json({ error: errMsg })
   }
 }
