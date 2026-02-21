@@ -14,13 +14,13 @@ export function ChatSplitLayout({ children }: ChatSplitLayoutProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full">
-      {/* Chat panel — 25% width, min 320px */}
+    <div className="flex h-screen w-full">
+      {/* Chat panel — 25% width, min 320px, full viewport height */}
       <div className="w-1/4 min-w-[320px] shrink-0">
         <ChatPanel variant="sidebar" onClose={() => setSidebarOpen(false)} />
       </div>
-      {/* Page content — flex-1 */}
-      <div className="flex-1 overflow-auto">{children}</div>
+      {/* Page content — scrolls independently */}
+      <div className="flex-1 overflow-y-auto">{children}</div>
     </div>
   )
 }

@@ -5,41 +5,61 @@ const SYSTEM_PROMPT = `You are the intent classifier for Wonda, an AI content ma
 Your job is to understand what the user wants and call the appropriate tool.
 
 AVAILABLE TOOLS:
-- generate_article: User wants to create/generate/write a new article. Extract the topic/title.
+- generate_article: User wants to create/generate/write a new article. Extract the topic/title. IMPORTANT: The articleRef MUST be a meaningful topic or title, NOT generic words like "new article", "an article", "article". If the user says "create an article" or "create a new article" without specifying a topic/title, do NOT call this tool — instead respond asking what the article should be about.
+- trigger_generation: User wants to actually generate/write the CONTENT of an existing article (run the AI writer). This is different from create — create adds a row, trigger_generation runs the AI to write the body content. Use when user says "generate content for X", "write the content of X", "run generation on X".
 - edit_article_field: User wants to change a specific field of an existing article (keyword, title, slug, category, status, metaTitle, metaDescription, ctaText, authorId).
 - edit_default: User wants to change a default setting for ALL future articles — triggered by words like "default", "always", "from now on", "all future". Fields: category, contentPaths (publish path/section), ctaText, authorAssignmentRules.
-- query_articles: User wants to see/list/find articles, optionally filtered by status.
-- count_articles: User wants to know how many articles they have, optionally filtered by status.
+- query_articles: User wants to see/list/find articles, optionally filtered by status or date.
+- count_articles: User wants to know how many articles they have, optionally filtered by status or date.
 - preview_article: User wants to preview/view a specific article.
 - help: User asks what you can do, asks for help, or asks about commands.
 
-If the user's message doesn't match any tool, respond with a short helpful message suggesting what you can do. Do NOT call a tool in that case.
+WHEN NOT TO CALL A TOOL:
+- If the user asks for keyword suggestions, content ideas, topic recommendations, or strategy advice — respond naturally with helpful suggestions based on the company profile data provided. Do NOT call a tool.
+- If the user's message is vague or doesn't match any tool clearly, respond with a helpful message. Do NOT call a tool.
+- If information is missing (e.g., "create an article" without a topic), ask for the missing information. Do NOT call a tool.
 
 IMPORTANT:
 - You receive the full conversation history. Use it to resolve references like "it", "that article", "the one I just created", "its keyword", etc.
-- For article references, extract the article name/title/keyword the user mentions. Strip surrounding quotes. If the user refers to an article from a previous message (e.g. "change its keyword"), resolve the reference using conversation history.
+- For article references, extract the article name/title/keyword the user mentions. Strip surrounding quotes.
 - For field names, normalize to: keyword, title, slug, category, status, metaTitle, metaDescription, ctaText, ctaUrl, authorId, contentPath.
 - For status filters, normalize to: pending, draft, published, generating, error.
+- For date filters: convert natural language like "older than 1 month" to days (e.g., 30), "last week" to 7, "last 3 months" to 90, etc.
 - Be generous in matching — understand synonyms, varied phrasing, typos, and natural language.`
 
 const TOOLS: Anthropic.Tool[] = [
   {
     name: "generate_article",
     description:
-      "Create/generate/write a new article. Use when the user wants to add a new article to their content library.",
+      "Create a new article entry in the content library. The articleRef must be a meaningful topic/title — NOT generic words like 'new article'. If the user doesn't specify a topic, do NOT call this tool.",
     input_schema: {
       type: "object" as const,
       properties: {
         articleRef: {
           type: "string",
           description:
-            "The article topic, title, or keyword the user wants to create. Extract from the user message, stripping quotes.",
+            "The article topic, title, or keyword. Must be a specific, meaningful topic — not 'new article' or 'article'. Strip quotes.",
         },
         category: {
           type: "string",
           enum: ["blog", "landing-page", "comparison", "how-to", "glossary"],
           description:
-            "Article category if specified by the user. Defaults to blog if not mentioned.",
+            "Article category if specified by the user.",
+        },
+      },
+      required: ["articleRef"],
+    },
+  },
+  {
+    name: "trigger_generation",
+    description:
+      "Run the AI content generation wizard on an existing article to write its body content. Use when user wants to actually generate/write the content, not just create a new entry.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        articleRef: {
+          type: "string",
+          description: "The article title, keyword, or slug to generate content for.",
         },
       },
       required: ["articleRef"],
@@ -48,29 +68,20 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "edit_article_field",
     description:
-      "Change/update a specific field of an existing article. Use when the user references a specific article and wants to modify one of its fields.",
+      "Change/update a specific field of an existing article.",
     input_schema: {
       type: "object" as const,
       properties: {
         articleRef: {
           type: "string",
-          description:
-            "The article title, keyword, or slug the user is referring to. Strip quotes.",
+          description: "The article title, keyword, or slug. Strip quotes.",
         },
         field: {
           type: "string",
           enum: [
-            "keyword",
-            "title",
-            "slug",
-            "category",
-            "status",
-            "metaTitle",
-            "metaDescription",
-            "ctaText",
-            "ctaUrl",
-            "authorId",
-            "contentPath",
+            "keyword", "title", "slug", "category", "status",
+            "metaTitle", "metaDescription", "ctaText", "ctaUrl",
+            "authorId", "contentPath",
           ],
           description: "The field to update.",
         },
@@ -91,15 +102,8 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         field: {
           type: "string",
-          enum: [
-            "category",
-            "contentPaths",
-            "ctaText",
-            "ctaUrl",
-            "authorAssignmentRules",
-          ],
-          description:
-            "The default setting to change. contentPaths = publish path/section/URL path.",
+          enum: ["category", "contentPaths", "ctaText", "ctaUrl", "authorAssignmentRules"],
+          description: "The default setting to change. contentPaths = publish path/section/URL path.",
         },
         value: {
           type: "string",
@@ -112,15 +116,22 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "query_articles",
     description:
-      "List/show/find articles in the content library, optionally filtered by status.",
+      "List/show/find articles in the content library, optionally filtered by status and/or date.",
     input_schema: {
       type: "object" as const,
       properties: {
         statusFilter: {
           type: "string",
           enum: ["pending", "draft", "published", "generating", "error"],
-          description:
-            "Optional status to filter by. Omit to show all articles.",
+          description: "Optional status to filter by.",
+        },
+        olderThanDays: {
+          type: "number",
+          description: 'Filter articles older than N days. E.g., "older than 1 month" = 30.',
+        },
+        newerThanDays: {
+          type: "number",
+          description: 'Filter articles newer than N days. E.g., "last week" = 7.',
         },
       },
       required: [],
@@ -129,15 +140,22 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "count_articles",
     description:
-      "Count how many articles are in the content library, optionally filtered by status.",
+      "Count how many articles are in the content library, optionally filtered by status and/or date.",
     input_schema: {
       type: "object" as const,
       properties: {
         statusFilter: {
           type: "string",
           enum: ["pending", "draft", "published", "generating", "error"],
-          description:
-            "Optional status to filter by. Omit to count all articles.",
+          description: "Optional status to filter by.",
+        },
+        olderThanDays: {
+          type: "number",
+          description: 'Filter articles older than N days. E.g., "older than 1 month" = 30.',
+        },
+        newerThanDays: {
+          type: "number",
+          description: 'Filter articles newer than N days. E.g., "last week" = 7.',
         },
       },
       required: [],
@@ -151,8 +169,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         articleRef: {
           type: "string",
-          description:
-            "The article title, keyword, or slug to preview. Strip quotes.",
+          description: "The article title, keyword, or slug to preview. Strip quotes.",
         },
       },
       required: ["articleRef"],
@@ -160,8 +177,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "help",
-    description:
-      "User asks what you can do, asks for help, or wants to see available commands.",
+    description: "User asks what you can do, asks for help, or wants to see available commands.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -183,25 +199,46 @@ export default async function handler(
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" })
   }
 
-  const { message, articleTitles, history } = req.body ?? {}
+  const { message, articleTitles, history, companyProfile } = req.body ?? {}
   if (!message || typeof message !== "string") {
     return res.status(400).json({ error: "Missing message field" })
   }
 
   const client = new Anthropic({ apiKey })
 
-  // Build context about existing articles for the model
-  const contextNote =
-    articleTitles && articleTitles.length > 0
-      ? `\n\nExisting articles in the library: ${articleTitles.slice(0, 50).join(", ")}`
-      : ""
+  // Build context sections
+  const contextParts: string[] = []
 
-  // Build conversation messages from history for context
+  if (articleTitles && articleTitles.length > 0) {
+    contextParts.push(
+      `Existing articles in the library: ${articleTitles.slice(0, 50).join(", ")}`
+    )
+  }
+
+  if (companyProfile) {
+    const cp = companyProfile
+    const profileLines: string[] = []
+    if (cp.name) profileLines.push(`Company: ${cp.name}`)
+    if (cp.description) profileLines.push(`Description: ${cp.description}`)
+    if (cp.valueProp) profileLines.push(`Value proposition: ${cp.valueProp}`)
+    if (cp.websiteUrl) profileLines.push(`Website: ${cp.websiteUrl}`)
+    if (cp.competitors?.length)
+      profileLines.push(`Competitors: ${cp.competitors.join(", ")}`)
+    if (cp.contentPaths?.length)
+      profileLines.push(`Content paths: ${cp.contentPaths.join(", ")}`)
+    if (profileLines.length > 0) {
+      contextParts.push(`Company profile:\n${profileLines.join("\n")}`)
+    }
+  }
+
+  const contextNote =
+    contextParts.length > 0 ? "\n\n" + contextParts.join("\n\n") : ""
+
+  // Build conversation messages from history
   const conversationMessages: Anthropic.MessageParam[] = []
   if (Array.isArray(history) && history.length > 0) {
     for (const msg of history) {
       const role = msg.role === "user" ? "user" : "assistant"
-      // Avoid consecutive same-role messages by merging
       const last = conversationMessages[conversationMessages.length - 1]
       if (last && last.role === role) {
         last.content = (last.content as string) + "\n" + msg.text
@@ -210,20 +247,18 @@ export default async function handler(
       }
     }
   }
-  // Add the current user message
   conversationMessages.push({ role: "user", content: message })
 
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 256,
+      max_tokens: 512,
       system: SYSTEM_PROMPT + contextNote,
       tools: TOOLS,
       tool_choice: { type: "auto" },
       messages: conversationMessages,
     })
 
-    // Check if the model called a tool
     const toolBlock = response.content.find(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
     )
@@ -235,7 +270,6 @@ export default async function handler(
       })
     }
 
-    // No tool called — model responded with text (unknown intent)
     const textBlock = response.content.find(
       (b): b is Anthropic.TextBlock => b.type === "text"
     )
@@ -246,7 +280,7 @@ export default async function handler(
       fallbackText: textBlock?.text ?? undefined,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Classification failed"
-    return res.status(500).json({ error: message })
+    const errMsg = err instanceof Error ? err.message : "Classification failed"
+    return res.status(500).json({ error: errMsg })
   }
 }

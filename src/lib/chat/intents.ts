@@ -1,4 +1,4 @@
-import type { Article } from "@/types"
+import type { Article, CompanyProfile } from "@/types"
 import type { ChatIntent, ChatIntentType, ChatMessage } from "./types"
 
 // ============================================================
@@ -7,35 +7,50 @@ import type { ChatIntent, ChatIntentType, ChatMessage } from "./types"
 
 interface ClassifyResponse {
   intent: string
-  params: Record<string, string>
+  params: Record<string, string | number>
   fallbackText?: string
 }
 
 /**
  * Classify user message using Claude AI (via /api/chat-classify).
- * Sends conversation history so the model has full context.
+ * Sends conversation history and company profile for full context.
  * Falls back to local regex if the API is unreachable.
  */
 export async function classifyIntent(
   message: string,
   articles: Article[],
-  history: ChatMessage[]
+  history: ChatMessage[],
+  profile: CompanyProfile
 ): Promise<ChatIntent & { fallbackText?: string }> {
   try {
     const articleTitles = articles
       .map((a) => a.title || a.keyword || a.slug)
       .filter(Boolean)
 
-    // Send last 20 messages for context (keeps payload small)
     const recentHistory = history.slice(-20).map((m) => ({
       role: m.role,
       text: m.text,
     }))
 
+    // Compact profile summary for AI context
+    const companyProfile = {
+      name: profile.name,
+      description: profile.description,
+      valueProp: profile.valueProp,
+      websiteUrl: profile.websiteUrl,
+      competitors: profile.competitors.map((c) => c.name),
+      contentPaths: profile.contentPaths,
+    }
+
     const res = await fetch("/api/chat-classify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, articleTitles, history: recentHistory }),
+      body: JSON.stringify({
+        message,
+        articleTitles,
+        history: recentHistory,
+        companyProfile,
+      }),
     })
 
     if (!res.ok) throw new Error(`API ${res.status}`)
@@ -43,7 +58,6 @@ export async function classifyIntent(
     const data: ClassifyResponse = await res.json()
     return mapApiResponse(data)
   } catch {
-    // Fallback to local regex classification
     return classifyIntentLocal(message)
   }
 }
@@ -59,17 +73,20 @@ function mapApiResponse(
 
   return {
     type: intentType,
-    articleRef: p.articleRef,
-    field: p.field,
-    value: p.value,
+    articleRef: p.articleRef as string | undefined,
+    field: p.field as string | undefined,
+    value: p.value as string | undefined,
     statusFilter: p.statusFilter as ChatIntent["statusFilter"],
     category: p.category as ChatIntent["category"],
+    olderThanDays: typeof p.olderThanDays === "number" ? p.olderThanDays : undefined,
+    newerThanDays: typeof p.newerThanDays === "number" ? p.newerThanDays : undefined,
     fallbackText: data.fallbackText,
   }
 }
 
 const VALID_INTENTS = new Set<ChatIntentType>([
   "generate_article",
+  "trigger_generation",
   "edit_article_field",
   "edit_default",
   "query_articles",

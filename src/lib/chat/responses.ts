@@ -7,7 +7,6 @@ export function buildResponse(
   intent: ChatIntent,
   result: ActionResult
 ): Omit<ChatMessage, "id" | "timestamp"> {
-  // Error responses
   if (!result.success) {
     return { role: "assistant", text: result.message }
   }
@@ -15,6 +14,8 @@ export function buildResponse(
   switch (intent.type) {
     case "generate_article":
       return buildGenerateResponse(result)
+    case "trigger_generation":
+      return buildTriggerGenerationResponse(result)
     case "edit_article_field":
       return buildEditResponse(result)
     case "edit_default":
@@ -58,15 +59,20 @@ function buildGenerateResponse(result: ActionResult): Omit<ChatMessage, "id" | "
   }
 }
 
-function buildEditResponse(result: ActionResult): Omit<ChatMessage, "id" | "timestamp"> {
+function buildTriggerGenerationResponse(result: ActionResult): Omit<ChatMessage, "id" | "timestamp"> {
   const buttons: ChatActionButton[] = []
   if (result.data?.articleId) {
-    buttons.push(
-      { label: "Preview", action: "preview", payload: { articleId: result.data.articleId } },
-      { label: "Edit", action: "edit", payload: { articleId: result.data.articleId } }
-    )
+    buttons.push({
+      label: "Generate Content",
+      action: "generate_content",
+      payload: { articleId: result.data.articleId },
+    })
   }
   return { role: "assistant", text: result.message, buttons }
+}
+
+function buildEditResponse(result: ActionResult): Omit<ChatMessage, "id" | "timestamp"> {
+  return { role: "assistant", text: result.message }
 }
 
 function buildQueryResponse(result: ActionResult): Omit<ChatMessage, "id" | "timestamp"> {
@@ -98,7 +104,6 @@ function buildPreviewResponse(result: ActionResult): Omit<ChatMessage, "id" | "t
   if (result.data?.articleId) {
     buttons.push(
       { label: "Preview", action: "preview", payload: { articleId: result.data.articleId } },
-      { label: "Edit", action: "edit", payload: { articleId: result.data.articleId } },
       { label: "Generate Content", action: "generate_content", payload: { articleId: result.data.articleId } }
     )
   }
@@ -110,11 +115,13 @@ function buildHelpResponse(): Omit<ChatMessage, "id" | "timestamp"> {
     role: "assistant",
     text: `Here's what I can help you with:
 
-- **Generate articles** — "Create an article called 'best ai tools'"
+- **Create articles** — "Create an article about 'best ai tools'"
+- **Generate content** — "Generate content for 'best ai tools'"
 - **Edit article fields** — "Change the keyword of 'best ai tools' to 'top ai tools'"
 - **Update defaults** — "I want to always publish in /learn section"
-- **Query your library** — "Show me all draft articles"
+- **Query your library** — "Show me all draft articles" or "Articles older than 1 month"
 - **Count articles** — "How many articles do I have?"
+- **Suggest keywords** — "Suggest some keyword ideas based on my company"
 - **Preview articles** — "Preview 'best ai tools'"
 
 Just type naturally and I'll figure out what you need!`,
@@ -124,7 +131,7 @@ Just type naturally and I'll figure out what you need!`,
 function buildUnknownResponse(): Omit<ChatMessage, "id" | "timestamp"> {
   return {
     role: "assistant",
-    text: `I'm not sure I understand. I can help you **generate articles**, **edit article fields**, **change defaults**, **query your library**, and more. Type "help" to see all commands.`,
+    text: `I'm not sure I understand. I can help you **create articles**, **generate content**, **edit fields**, **change defaults**, **query your library**, and **suggest keywords**. Type "help" to see all commands.`,
   }
 }
 

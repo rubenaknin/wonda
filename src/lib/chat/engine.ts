@@ -38,7 +38,12 @@ export async function processMessage(
   profileOps: ProfileOps,
   history: ChatMessage[]
 ): Promise<ProcessResult> {
-  const intentResult = await classifyIntent(userText, articlesOps.articles, history)
+  const intentResult = await classifyIntent(
+    userText,
+    articlesOps.articles,
+    history,
+    profileOps.profile
+  )
   const { fallbackText, ...intent } = intentResult
 
   const result = executeAction(intent, articlesOps, profileOps)
@@ -78,12 +83,17 @@ export async function processMessage(
     }
   }
 
-  // Build command for preview
+  // Build commands
   let command: ProcessResult["command"]
   if (intent.type === "preview_article" && result.data?.articleId) {
     command = {
       type: "open_article_preview",
       payload: { articleId: result.data.articleId },
+    }
+  } else if (intent.type === "trigger_generation" && result.success && result.data?.articleId) {
+    command = {
+      type: "open_article_wizard",
+      payload: { articleId: result.data.articleId, startStep: "generate" },
     }
   }
 
@@ -133,8 +143,6 @@ export function confirmGeneration(
     text: `Done! **${title}** has been added to your Content Library.`,
     timestamp: Date.now(),
     buttons: [
-      { label: "Preview", action: "preview", payload: { articleId: id } },
-      { label: "Edit", action: "edit", payload: { articleId: id } },
       { label: "Generate Content", action: "generate_content", payload: { articleId: id } },
     ],
   }

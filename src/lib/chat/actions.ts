@@ -17,7 +17,6 @@ interface ProfileOps {
 
 /**
  * Execute an intent against articles/profile contexts.
- * Returns an ActionResult with success flag, message, and optional data.
  */
 export function executeAction(
   intent: ChatIntent,
@@ -26,7 +25,9 @@ export function executeAction(
 ): ActionResult {
   switch (intent.type) {
     case "generate_article":
-      return handleGenerateArticle(intent, articlesOps, profileOps)
+      return handleGenerateArticle(intent, profileOps)
+    case "trigger_generation":
+      return handleTriggerGeneration(intent, articlesOps)
     case "edit_article_field":
       return handleEditArticleField(intent, articlesOps)
     case "edit_default":
@@ -51,7 +52,6 @@ export function executeAction(
 
 function handleGenerateArticle(
   intent: ChatIntent,
-  _articlesOps: ArticlesOps,
   profileOps: ProfileOps
 ): ActionResult {
   const keyword = intent.articleRef ?? ""
@@ -72,6 +72,29 @@ function handleGenerateArticle(
     data: {
       article: { title, keyword, slug, category, contentPath },
     },
+  }
+}
+
+function handleTriggerGeneration(
+  intent: ChatIntent,
+  articlesOps: ArticlesOps
+): ActionResult {
+  if (!intent.articleRef) {
+    return { success: false, message: "Which article should I generate content for?" }
+  }
+
+  const article = findArticle(intent.articleRef, articlesOps.articles)
+  if (!article) {
+    return {
+      success: false,
+      message: `I couldn't find an article matching "${intent.articleRef}".`,
+    }
+  }
+
+  return {
+    success: true,
+    message: `Starting content generation for "${article.title}"...`,
+    data: { articleId: article.id },
   }
 }
 
@@ -135,19 +158,34 @@ function handleEditDefault(
   }
 
   if (intent.field === "category") {
-    // category is per-article, but we note it
     return {
       success: true,
       message: `Noted! I'll suggest **${value}** as the default category for new articles.`,
     }
   }
 
-  // Generic profile field update
   profileOps.updateProfile({ [intent.field]: value })
   return {
     success: true,
     message: `Default **${intent.field}** updated to "${value}".`,
   }
+}
+
+function applyDateFilter(articles: Article[], intent: ChatIntent): Article[] {
+  let filtered = articles
+  const now = Date.now()
+
+  if (intent.olderThanDays) {
+    const cutoff = now - intent.olderThanDays * 24 * 60 * 60 * 1000
+    filtered = filtered.filter((a) => new Date(a.createdAt).getTime() < cutoff)
+  }
+
+  if (intent.newerThanDays) {
+    const cutoff = now - intent.newerThanDays * 24 * 60 * 60 * 1000
+    filtered = filtered.filter((a) => new Date(a.createdAt).getTime() >= cutoff)
+  }
+
+  return filtered
 }
 
 function handleQueryArticles(
@@ -158,9 +196,14 @@ function handleQueryArticles(
   if (intent.statusFilter) {
     filtered = filtered.filter((a) => a.status === intent.statusFilter)
   }
+  filtered = applyDateFilter(filtered, intent)
 
   if (filtered.length === 0) {
-    const qualifier = intent.statusFilter ? ` with status "${intent.statusFilter}"` : ""
+    const qualifiers: string[] = []
+    if (intent.statusFilter) qualifiers.push(`status "${intent.statusFilter}"`)
+    if (intent.olderThanDays) qualifiers.push(`older than ${intent.olderThanDays} days`)
+    if (intent.newerThanDays) qualifiers.push(`from the last ${intent.newerThanDays} days`)
+    const qualifier = qualifiers.length > 0 ? ` (${qualifiers.join(", ")})` : ""
     return {
       success: true,
       message: `No articles found${qualifier}.`,
@@ -183,8 +226,14 @@ function handleCountArticles(
   if (intent.statusFilter) {
     filtered = filtered.filter((a) => a.status === intent.statusFilter)
   }
+  filtered = applyDateFilter(filtered, intent)
 
-  const qualifier = intent.statusFilter ? ` ${intent.statusFilter}` : ""
+  const qualifiers: string[] = []
+  if (intent.statusFilter) qualifiers.push(intent.statusFilter)
+  if (intent.olderThanDays) qualifiers.push(`older than ${intent.olderThanDays} days`)
+  if (intent.newerThanDays) qualifiers.push(`from the last ${intent.newerThanDays} days`)
+  const qualifier = qualifiers.length > 0 ? ` ${qualifiers.join(", ")}` : ""
+
   return {
     success: true,
     message: `You have **${filtered.length}**${qualifier} article${filtered.length !== 1 ? "s" : ""}.`,

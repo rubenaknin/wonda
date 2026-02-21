@@ -5,6 +5,7 @@ import type { Article, ArticleCategory, ArticleStatus } from "@/types"
 // ============================================================
 export type ChatIntentType =
   | "generate_article"
+  | "trigger_generation"
   | "edit_article_field"
   | "edit_default"
   | "query_articles"
@@ -25,6 +26,10 @@ export interface ChatIntent {
   statusFilter?: ArticleStatus
   /** Category for generation */
   category?: ArticleCategory
+  /** Date filter: articles older than N days */
+  olderThanDays?: number
+  /** Date filter: articles newer than N days */
+  newerThanDays?: number
 }
 
 // ============================================================

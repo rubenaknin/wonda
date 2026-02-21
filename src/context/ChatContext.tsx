@@ -34,6 +34,7 @@ type ChatAction =
   | { type: "TOGGLE_FLOATING" }
   | { type: "SET_FLOATING"; open: boolean }
   | { type: "SET_PENDING"; pending: PendingConfirmation | null }
+  | { type: "CLEAR_MESSAGES" }
 
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
@@ -53,6 +54,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, floatingOpen: action.open }
     case "SET_PENDING":
       return { ...state, pendingConfirmation: action.pending }
+    case "CLEAR_MESSAGES":
+      return { ...state, messages: [], pendingConfirmation: null }
     default:
       return state
   }
@@ -87,6 +90,7 @@ interface ChatContextValue {
   pendingConfirmation: PendingConfirmation | null
   sendMessage: (text: string) => void
   handleButtonClick: (action: string, payload?: Record<string, string>) => void
+  clearMessages: () => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   toggleFloating: () => void
@@ -149,7 +153,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const trimmed = text.trim()
       if (!trimmed) return
 
-      // Add user message
       const userMsg: ChatMessage = {
         id: `msg_user_${Date.now()}`,
         role: "user",
@@ -175,7 +178,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Async AI classification (pass message history for context)
+      // Async AI classification
       processMessage(
         trimmed,
         {
@@ -217,7 +220,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const handleButtonClick = useCallback(
     (action: string, payload?: Record<string, string>) => {
-      // Handle confirm_generate specially
       if (action === "confirm_generate" && pendingRef.current) {
         dispatch({ type: "SET_PROCESSING", value: true })
         const result = confirmGeneration(pendingRef.current, {
@@ -233,7 +235,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Handle navigation
       const cmd = handleActionButton(action, payload)
       if (cmd) {
         emitCommand(cmd)
@@ -241,6 +242,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     },
     [emitCommand]
   )
+
+  const clearMessages = useCallback(() => {
+    dispatch({ type: "CLEAR_MESSAGES" })
+  }, [])
 
   const toggleSidebar = useCallback(() => dispatch({ type: "TOGGLE_SIDEBAR" }), [])
   const setSidebarOpen = useCallback((open: boolean) => dispatch({ type: "SET_SIDEBAR", open }), [])
@@ -257,6 +262,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         pendingConfirmation: state.pendingConfirmation,
         sendMessage,
         handleButtonClick,
+        clearMessages,
         toggleSidebar,
         setSidebarOpen,
         toggleFloating,
