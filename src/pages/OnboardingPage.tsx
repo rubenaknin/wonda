@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { Check, Loader2, Trash2, Plus, ArrowRight, Sparkles } from "lucide-react"
+import { Check, Loader2, Trash2, Plus, ArrowRight, Sparkles, Globe, Search, Users, Zap } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,8 @@ import { parseSitemapUrls } from "@/lib/sitemap"
 import { isPersonalEmail } from "@/lib/auth-helpers"
 import type { Competitor, IntelligenceBankQuestion, CompanyProfile, Article } from "@/types"
 
-const STEP_DELAYS = [3000, 3000, 3000, 3000]
+const STEP_DELAYS = [2500, 3000, 3000, 2500]
+const STEP_ICONS = [Globe, Search, Users, Zap]
 
 const TOTAL_ONBOARDING_STEPS = 7 // dots indicator
 
@@ -59,6 +60,9 @@ export function OnboardingPage() {
   const domainChecked = useRef(false)
   const userRef = useRef(user)
   userRef.current = user
+
+  // Smooth progress (0–100)
+  const [smoothProgress, setSmoothProgress] = useState(0)
 
   // Dynamic step labels
   const [stepLabels, setStepLabels] = useState([
@@ -191,13 +195,23 @@ export function OnboardingPage() {
         // Enrich failed, keep default labels
       })
 
-    // Run animation timer in parallel
+    // Run animation timer in parallel with smooth progress
+    const totalDuration = STEP_DELAYS.reduce((a, b) => a + b, 0)
     const timerPromise = (async () => {
+      let elapsed = 0
       for (let i = 0; i < STEP_DELAYS.length; i++) {
         setAnalysisStep(i)
-        await new Promise((r) => setTimeout(r, STEP_DELAYS[i]))
+        const stepDuration = STEP_DELAYS[i]
+        const steps = 20 // sub-steps per step for smooth progress
+        const interval = stepDuration / steps
+        for (let j = 0; j < steps; j++) {
+          await new Promise((r) => setTimeout(r, interval))
+          elapsed += interval
+          setSmoothProgress(Math.min((elapsed / totalDuration) * 100, 100))
+        }
       }
       setAnalysisStep(STEP_DELAYS.length)
+      setSmoothProgress(100)
     })()
 
     // Wait for APIs
@@ -333,7 +347,6 @@ export function OnboardingPage() {
   }
 
   const isAnalysisDone = analysisStep >= STEP_DELAYS.length
-  const analysisProgress = (analysisStep / STEP_DELAYS.length) * 100
 
   // Compute which dot is active
   const dotStep = (() => {
@@ -403,84 +416,135 @@ export function OnboardingPage() {
 
         {/* Analysis Phase */}
         {phase === "analyzing" && (
-          <div className="pt-12 space-y-8 animate-in fade-in duration-300">
-            <div className="space-y-2 text-center">
+          <div className="pt-8 space-y-10 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="space-y-3 text-center max-w-lg mx-auto">
               <h1 className="text-3xl font-bold tracking-tight">
-                Stand by for Your Content Strategy
+                Building Your Strategy
               </h1>
-              <p className="text-muted-foreground">
-                Loading Competitive Report for {domain}
+              <p className="text-muted-foreground text-base">
+                Analyzing <span className="font-medium text-foreground">{domain}</span>
               </p>
             </div>
 
-            {/* Progress bar */}
-            <div className="h-2 rounded-full bg-border overflow-hidden max-w-xl mx-auto">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#0061FF] transition-all duration-700"
-                style={{ width: `${analysisProgress}%` }}
-              />
+            {/* Smooth progress bar */}
+            <div className="max-w-md mx-auto">
+              <div className="h-1.5 rounded-full bg-border/60 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0061FF] via-[#0061FF] to-[#10B981]"
+                  style={{
+                    width: `${smoothProgress}%`,
+                    transition: "width 150ms ease-out",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="text-xs text-muted-foreground">
+                  Step {Math.min(analysisStep + 1, STEP_DELAYS.length)} of {STEP_DELAYS.length}
+                </span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {Math.round(smoothProgress)}%
+                </span>
+              </div>
             </div>
 
-            {/* Steps checklist */}
-            <div className="max-w-xl mx-auto rounded-xl border border-border bg-white p-6 space-y-4">
+            {/* Steps — vertical timeline */}
+            <div className="max-w-md mx-auto space-y-0">
               {stepLabels.map((label, index) => {
-                const isDone = index < analysisStep
+                const isDone = index < analysisStep || isAnalysisDone
                 const isActive = index === analysisStep && !isAnalysisDone
+                const isPending = index > analysisStep && !isAnalysisDone
+                const StepIcon = STEP_ICONS[index]
 
                 return (
-                  <div
-                    key={index}
-                    className={`flex items-center gap-3 transition-opacity duration-300 ${
-                      index > analysisStep && !isAnalysisDone ? "opacity-30" : "opacity-100"
-                    }`}
-                  >
-                    <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                      {isDone || (isAnalysisDone && index === stepLabels.length - 1) ? (
-                        <div className="w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center">
-                          <Check className="h-3.5 w-3.5 text-white" />
-                        </div>
+                  <div key={index} className="flex gap-4 relative">
+                    {/* Vertical line */}
+                    {index < stepLabels.length - 1 && (
+                      <div
+                        className="absolute left-[19px] top-[40px] w-[2px] h-[calc(100%-24px)]"
+                        style={{
+                          background: isDone ? "#10B981" : "#E2E8F0",
+                          transition: "background 0.5s ease",
+                        }}
+                      />
+                    )}
+
+                    {/* Icon */}
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative z-10"
+                      style={{
+                        background: isDone
+                          ? "#10B981"
+                          : isActive
+                            ? "#0061FF"
+                            : "#F1F5F9",
+                        transition: "background 0.4s ease, transform 0.3s ease",
+                        transform: isActive ? "scale(1.1)" : "scale(1)",
+                        boxShadow: isActive
+                          ? "0 0 0 4px rgba(0, 97, 255, 0.15)"
+                          : isDone
+                            ? "0 0 0 4px rgba(16, 185, 129, 0.1)"
+                            : "none",
+                      }}
+                    >
+                      {isDone ? (
+                        <Check className="h-4 w-4 text-white" />
                       ) : isActive ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-[#0061FF]" />
+                        <StepIcon className="h-4 w-4 text-white animate-pulse" />
                       ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-border" />
+                        <StepIcon className="h-4 w-4 text-muted-foreground/50" />
                       )}
                     </div>
-                    <span
-                      className={`text-sm transition-all duration-300 ${
-                        isDone || isAnalysisDone
-                          ? "text-[#10B981] font-medium"
-                          : isActive
-                            ? "text-foreground font-medium"
-                            : "text-muted-foreground"
-                      }`}
+
+                    {/* Content */}
+                    <div
+                      className="pb-6 pt-2 min-w-0"
+                      style={{
+                        opacity: isPending ? 0.35 : 1,
+                        transition: "opacity 0.4s ease",
+                      }}
                     >
-                      {label}
-                    </span>
+                      <p
+                        className="text-sm leading-snug"
+                        style={{
+                          fontWeight: isActive || isDone ? 500 : 400,
+                          color: isDone
+                            ? "#10B981"
+                            : isActive
+                              ? "#0F172A"
+                              : "#94A3B8",
+                          transition: "color 0.4s ease",
+                        }}
+                      >
+                        {label}
+                      </p>
+                      {isActive && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <div className="flex gap-0.5">
+                            <span className="block w-1 h-1 rounded-full bg-[#0061FF] animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <span className="block w-1 h-1 rounded-full bg-[#0061FF] animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <span className="block w-1 h-1 rounded-full bg-[#0061FF] animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}
             </div>
 
-            {/* Rotating tip */}
-            <div className="max-w-xl mx-auto rounded-xl border border-[#10B981]/20 bg-[#10B981]/5 p-5">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-[#10B981]/10 shrink-0">
-                  <Sparkles className="h-4 w-4 text-[#10B981]" />
+            {/* Rotating tip — minimal */}
+            <div className="max-w-md mx-auto">
+              <div className="rounded-xl bg-white border border-border/60 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-1.5 rounded-lg bg-[#0061FF]/5 shrink-0 mt-0.5">
+                    <Sparkles className="h-3.5 w-3.5 text-[#0061FF]" />
+                  </div>
+                  <div className="min-h-[36px]">
+                    <p className="text-sm font-medium text-foreground/90">{TIPS[tipIndex].title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{TIPS[tipIndex].desc}</p>
+                  </div>
                 </div>
-                <div className="min-h-[40px]">
-                  <p className="text-sm font-medium">{TIPS[tipIndex].title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{TIPS[tipIndex].desc}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-center gap-1.5 mt-3">
-                {TIPS.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`rounded-full transition-all duration-300 ${
-                      i === tipIndex ? "w-3 h-2 bg-[#10B981]" : "w-2 h-2 bg-[#10B981]/30"
-                    }`}
-                  />
-                ))}
               </div>
             </div>
           </div>
