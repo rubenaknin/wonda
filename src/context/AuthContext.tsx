@@ -39,6 +39,7 @@ interface AuthContextValue {
   deleteAccount: (password?: string) => Promise<void>
   sendVerificationEmail: () => Promise<void>
   refreshUser: () => Promise<void>
+  updateUserLocally: (updates: Partial<UserProfile>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -102,6 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setInitialized(true)
     })
     return unsub
+  }, [])
+
+  const updateUserLocally = useCallback((updates: Partial<UserProfile>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev))
   }, [])
 
   const refreshUser = useCallback(async () => {
@@ -195,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deleteAccount,
         sendVerificationEmail: sendVerificationEmailFn,
         refreshUser,
+        updateUserLocally,
       }}
     >
       {children}

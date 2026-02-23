@@ -48,7 +48,7 @@ function DotIndicator({ total, current }: { total: number; current: number }) {
 
 export function OnboardingPage() {
   const navigate = useNavigate()
-  const { user, firebaseUser, refreshUser } = useAuth()
+  const { user, firebaseUser, refreshUser, updateUserLocally } = useAuth()
   const { updateProfile } = useCompanyProfile()
   const { addArticle } = useArticles()
   const [phase, setPhase] = useState<Phase>("loading")
@@ -234,7 +234,8 @@ export function OnboardingPage() {
       addArticle(article)
     }
 
-    // Mark onboarding complete — fire and forget, transition immediately
+    // Mark onboarding complete — update local state immediately so ProtectedRoute won't redirect
+    updateUserLocally({ onboardingComplete: true })
     const currentUser = userRef.current
     if (currentUser?.uid) {
       writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
@@ -247,6 +248,7 @@ export function OnboardingPage() {
   }
 
   const handleNavigate = (path: string) => {
+    updateUserLocally({ onboardingComplete: true })
     const currentUser = userRef.current
     if (currentUser?.uid && !currentUser.onboardingComplete) {
       writeUserDoc(currentUser.uid, { onboardingComplete: true })
@@ -285,6 +287,7 @@ export function OnboardingPage() {
       addArticle(article)
     }
 
+    updateUserLocally({ onboardingComplete: true })
     const currentUser = userRef.current
     if (currentUser?.uid) {
       writeUserDoc(currentUser.uid, { onboardingComplete: true, domain })
